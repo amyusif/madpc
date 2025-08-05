@@ -15,17 +15,15 @@ import {
 } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { TestSignUp } from "@/components/TestSignUp";
 
 export default function Auth() {
   const router = useRouter();
-  const { signIn, signUp, user, loading: authLoading } = useAuth();
+  const { signIn, user, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
   // Redirect to dashboard when user is authenticated
   useEffect(() => {
     if (user && !authLoading) {
-      console.log("User authenticated, redirecting to dashboard:", user);
       router.push("/dashboard");
     }
   }, [user, authLoading, router]);
@@ -41,11 +39,7 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      console.log("Attempting to sign in with:", loginData.email);
-
       await signIn(loginData.email, loginData.password);
-
-      console.log("Sign in successful, waiting for auth state change");
 
       toast({
         title: "✅ Welcome back!",
@@ -147,9 +141,6 @@ export default function Auth() {
             </div>
           </CardContent>
         </Card>
-
-        {/* Test Sign Up Component - Remove this after testing */}
-        <TestSignUp />
 
         {/* Footer */}
         <div className="text-center text-sm text-gray-500">

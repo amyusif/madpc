@@ -17,14 +17,6 @@ interface AuthContextType {
   profile: Profile | null;
   session: Session | null;
   loading: boolean;
-  signUp: (
-    email: string,
-    password: string,
-    fullName: string,
-    role: "district_commander" | "unit_supervisor",
-    badgeNumber?: string,
-    phone?: string
-  ) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -52,19 +44,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth state change:", { event, session });
-
       setSession(session);
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        console.log(
-          "User authenticated, fetching profile for:",
-          session.user.id
-        );
         await fetchProfile(session.user.id);
       } else {
-        console.log("No user session, clearing profile");
         setProfile(null);
       }
       setLoading(false);
@@ -75,80 +60,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchProfile = async (userId: string) => {
     try {
-      console.log("Fetching profile for user ID:", userId);
-
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", userId)
         .single();
 
-      console.log("Profile fetch result:", { data, error });
-
       if (error && error.code !== "PGRST116") {
         console.error("Profile fetch error:", error);
         throw error;
       }
 
-      if (data) {
-        console.log("Profile found:", data);
-        setProfile(data);
-      } else {
-        console.log("No profile found, setting to null");
-        setProfile(null);
-      }
+      setProfile(data || null);
     } catch (error) {
       console.error("Error fetching profile:", error);
       setProfile(null);
-    }
-  };
-
-  const signUp = async (
-    email: string,
-    password: string,
-    fullName: string,
-    role: "district_commander" | "unit_supervisor",
-    badgeNumber?: string,
-    phone?: string
-  ) => {
-    try {
-      setLoading(true);
-
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName,
-            role,
-            badge_number: badgeNumber,
-            phone,
-          },
-        },
-      });
-
-      if (error) throw error;
-
-      // Create profile in profiles table
-      if (data.user) {
-        const { error: profileError } = await supabase.from("profiles").insert([
-          {
-            id: data.user.id,
-            full_name: fullName,
-            badge_number: badgeNumber,
-            role,
-            phone,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
-        ]);
-
-        if (profileError) throw profileError;
-      }
-    } catch (error: any) {
-      throw new Error(error.message || "Failed to sign up");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -156,25 +82,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setLoading(true);
 
-      console.log("Attempting Supabase signIn with:", email);
-
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      console.log("Supabase signIn response:", { data, error });
-
       if (error) {
-        console.error("Supabase signIn error:", error);
+        console.error("Authentication failed:", error.message);
         throw error;
       }
 
-      console.log("SignIn successful, user:", data.user);
-
       // The auth state change listener will handle setting the user state
     } catch (error: any) {
-      console.error("SignIn catch block error:", error);
       throw new Error(error.message || "Failed to sign in");
     } finally {
       setLoading(false);
@@ -198,7 +117,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     profile,
     session,
     loading,
-    signUp,
     signIn,
     signOut,
   };
