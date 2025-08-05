@@ -118,6 +118,34 @@ export const supabaseHelpers = {
     return data as Personnel;
   },
 
+  async updatePersonnel(
+    personnelId: string,
+    personnel: Partial<Omit<Personnel, "id" | "created_at">>
+  ) {
+    const { data, error } = await supabase
+      .from("personnel")
+      .update({
+        ...personnel,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", personnelId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as Personnel;
+  },
+
+  async deletePersonnel(personnelId: string) {
+    const { error } = await supabase
+      .from("personnel")
+      .delete()
+      .eq("id", personnelId);
+
+    if (error) throw error;
+    return { success: true };
+  },
+
   // Cases operations
   async getCases() {
     const { data, error } = await supabase
