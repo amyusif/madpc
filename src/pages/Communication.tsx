@@ -103,7 +103,7 @@ export default function Communication() {
               <Button
                 variant="destructive"
                 className="gap-2"
-                onClick={() => setShowSendAlertModal(true)}
+                onClick={() => setShowSendMessageModal(true)}
               >
                 <AlertTriangle className="w-4 h-4" />
                 Send Alert

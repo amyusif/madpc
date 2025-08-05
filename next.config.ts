@@ -20,4 +20,10 @@ const nextConfig: NextConfig = {
   },
 };
 
+module.exports = {
+  experimental: {
+    turbo: true,
+  },
+};
+
 export default nextConfig;
