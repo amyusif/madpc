@@ -15,18 +15,25 @@ import {
 } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigation } from "@/hooks/useNavigation";
+import { PageLoading, ButtonLoading } from "@/components/ui/loading";
 
 export default function Auth() {
   const router = useRouter();
   const { signIn, user, loading: authLoading } = useAuth();
   const { toast } = useToast();
+  const { navigateTo, isNavigating } = useNavigation();
 
   // Redirect to dashboard when user is authenticated
   useEffect(() => {
     if (user && !authLoading) {
-      router.push("/dashboard");
+      navigateTo("/dashboard", {
+        replace: true,
+        showToast: true,
+        loadingText: "Redirecting to dashboard...",
+      });
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, navigateTo]);
 
   const [loading, setLoading] = useState(false);
   const [loginData, setLoginData] = useState({
@@ -61,6 +68,17 @@ export default function Auth() {
       setLoading(false);
     }
   };
+
+  // Show loading screen when authenticating or navigating
+  if (authLoading || (user && !authLoading) || isNavigating) {
+    return (
+      <PageLoading
+        text={
+          user ? "Redirecting to dashboard..." : "Checking authentication..."
+        }
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
@@ -130,9 +148,13 @@ export default function Auth() {
               <Button
                 type="submit"
                 className="w-full bg-blue-600 hover:bg-blue-700"
-                disabled={loading}
+                disabled={loading || isNavigating}
               >
-                {loading ? "Signing in..." : "Sign In"}
+                {loading || isNavigating ? (
+                  <ButtonLoading text="Signing in..." />
+                ) : (
+                  "Sign In"
+                )}
               </Button>
             </form>
 

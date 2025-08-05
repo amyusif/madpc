@@ -14,6 +14,8 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { useNavigation } from "@/hooks/useNavigation";
+import { Loading } from "@/components/ui/loading";
 
 const menuItems = [
   { title: "Overview", url: "/dashboard", icon: Home },
@@ -28,6 +30,7 @@ const menuItems = [
 export function AppSidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const pathname = usePathname();
+  const { isNavigating } = useNavigation();
 
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed);
@@ -76,10 +79,15 @@ export function AppSidebar() {
                     isActive
                       ? "bg-sidebar-accent text-sidebar-accent-foreground"
                       : "hover:bg-sidebar-accent/50"
-                  }`}
+                  } ${isNavigating ? "opacity-50 pointer-events-none" : ""}`}
                 >
                   <item.icon className="w-6 h-6 flex-shrink-0" />
-                  {!isCollapsed && <span>{item.title}</span>}
+                  {!isCollapsed && (
+                    <span className="flex items-center gap-2">
+                      {item.title}
+                      {isNavigating && <Loading size="sm" />}
+                    </span>
+                  )}
                 </Link>
               );
             })}

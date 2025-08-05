@@ -6,25 +6,24 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/hooks/useAuth";
 import { AppDataProvider } from "@/hooks/useAppData";
+import { LoadingProvider } from "@/contexts/LoadingContext";
 
 const queryClient = new QueryClient();
 
-export function ClientProviders({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export function ClientProviders({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <AppDataProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            {children}
-          </TooltipProvider>
-        </AppDataProvider>
-      </AuthProvider>
+      <LoadingProvider>
+        <AuthProvider>
+          <AppDataProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              {children}
+            </TooltipProvider>
+          </AppDataProvider>
+        </AuthProvider>
+      </LoadingProvider>
     </QueryClientProvider>
   );
 }

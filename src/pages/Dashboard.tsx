@@ -16,9 +16,11 @@ import {
 } from "lucide-react";
 import { useAppData } from "@/hooks/useAppData";
 import { useToast } from "@/hooks/use-toast";
+import { Loading } from "@/components/ui/loading";
 
 export default function Dashboard() {
-  const { personnel, cases, duties, error, refreshData, stats } = useAppData();
+  const { personnel, cases, duties, error, refreshData, stats, loading } =
+    useAppData();
   const { toast } = useToast();
 
   // Get recent cases (last 5)
@@ -84,34 +86,54 @@ export default function Dashboard() {
 
       {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="Total Personnel"
-          value={stats.totalPersonnel.toString()}
-          subtitle="Active officers"
-          icon={Users}
-          variant="blue"
-        />
-        <StatCard
-          title="Active Cases"
-          value={stats.activeCases.toString()}
-          subtitle="Under investigation"
-          icon={FileText}
-          variant="green"
-        />
-        <StatCard
-          title="Pending Duties"
-          value={stats.pendingDuties.toString()}
-          subtitle="Awaiting assignment"
-          icon={Calendar}
-          variant="orange"
-        />
-        <StatCard
-          title="Active Alerts"
-          value={stats.activeAlerts.toString()}
-          subtitle="Urgent attention"
-          icon={AlertTriangle}
-          variant="red"
-        />
+        {loading ? (
+          // Loading skeleton for stats
+          Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i} className="animate-pulse">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-24"></div>
+                    <div className="h-8 bg-gray-200 rounded w-16"></div>
+                    <div className="h-3 bg-gray-200 rounded w-20"></div>
+                  </div>
+                  <div className="h-8 w-8 bg-gray-200 rounded"></div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        ) : (
+          <>
+            <StatCard
+              title="Total Personnel"
+              value={stats.totalPersonnel.toString()}
+              subtitle="Active officers"
+              icon={Users}
+              variant="blue"
+            />
+            <StatCard
+              title="Active Cases"
+              value={stats.activeCases.toString()}
+              subtitle="Under investigation"
+              icon={FileText}
+              variant="green"
+            />
+            <StatCard
+              title="Pending Duties"
+              value={stats.pendingDuties.toString()}
+              subtitle="Awaiting assignment"
+              icon={Calendar}
+              variant="orange"
+            />
+            <StatCard
+              title="Active Alerts"
+              value={stats.activeAlerts.toString()}
+              subtitle="Urgent attention"
+              icon={AlertTriangle}
+              variant="red"
+            />
+          </>
+        )}
       </div>
 
       {/* Content Grid */}
