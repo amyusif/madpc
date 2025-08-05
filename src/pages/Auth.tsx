@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Mail, Lock } from "lucide-react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -91,10 +92,12 @@ export default function Auth() {
         {/* Header Section */}
         <div className="text-center space-y-4">
           <div className="flex justify-center">
-            <img
+            <Image
               src="/police logo.png"
               alt="Ghana Police Logo"
-              className="w-20 h-20 object-contain"
+              width={80}
+              height={80}
+              className="object-contain"
             />
           </div>
           <div>

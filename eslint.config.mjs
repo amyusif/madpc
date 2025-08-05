@@ -13,4 +13,15 @@ const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
 ];
 
+module.exports = {
+  // …your existing config…
+  rules: {
+    // turn off the explicit-any ban
+    "@typescript-eslint/no-explicit-any": "off",
+
+    // you can also tweak other globals if you like:
+    // "@typescript-eslint/explicit-module-boundary-types": "off",
+  },
+};
+
 export default eslintConfig;

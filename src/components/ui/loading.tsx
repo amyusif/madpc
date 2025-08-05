@@ -1,5 +1,6 @@
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 interface LoadingProps {
   size?: "sm" | "md" | "lg";
@@ -10,8 +11,8 @@ interface LoadingProps {
 export function Loading({ size = "md", text, className }: LoadingProps) {
   const sizeClasses = {
     sm: "w-4 h-4",
-    md: "w-6 h-6", 
-    lg: "w-8 h-8"
+    md: "w-6 h-6",
+    lg: "w-8 h-8",
   };
 
   return (
@@ -27,14 +28,18 @@ export function PageLoading({ text = "Loading..." }: { text?: string }) {
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="text-center space-y-4">
         <div className="flex justify-center">
-          <img
+          <Image
             src="/police logo.png"
             alt="Ghana Police Logo"
-            className="w-16 h-16 object-contain opacity-80"
+            width={64}
+            height={64}
+            className="object-contain opacity-80"
           />
         </div>
         <Loading size="lg" text={text} />
-        <p className="text-sm text-gray-500">Manso Adubia District Police Command</p>
+        <p className="text-sm text-gray-500">
+          Manso Adubia District Police Command
+        </p>
       </div>
     </div>
   );

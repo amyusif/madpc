@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { useNavigation } from "@/hooks/useNavigation";
 import { Loading } from "@/components/ui/loading";
@@ -47,10 +48,12 @@ export function AppSidebar() {
         <div className="p-6 border-b border-sidebar-border">
           <div className="flex items-center gap-4">
             <div className="w-10 h-10 bg-sidebar-primary rounded-full flex items-center justify-center overflow-hidden">
-              <img
+              <Image
                 src="/police logo.png"
                 alt="Police Logo"
-                className="w-8 h-8 object-contain"
+                width={32}
+                height={32}
+                className="object-contain"
               />
             </div>
             {!isCollapsed && (
