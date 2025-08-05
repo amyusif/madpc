@@ -20,9 +20,10 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       console.log("No user found, redirecting to auth");
 
       // Store the current path so we can redirect back after login
-      if (pathname !== "/" && pathname !== "/auth") {
-        sessionStorage.setItem("intendedPath", pathname);
-      }
+     if (pathname && pathname !== "/" && pathname !== "/auth") {
+  sessionStorage.setItem("intendedPath", pathname);
+}
+
 
       router.replace("/");
     }
