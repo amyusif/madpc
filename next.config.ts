@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -9,24 +8,22 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ["lucide-react", "@radix-ui/react-icons"],
   },
-  // Optimize images
+  // Optimize images for Vercel deployment
   images: {
-    domains: ["localhost"],
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "**",
+      },
+    ],
     formats: ["image/webp", "image/avif"],
   },
   // Reduce bundle size
   compiler: {
     removeConsole: process.env.NODE_ENV === "production",
   },
-};
-
-module.exports = {
-  experimental: {
-    turbo: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+  // Force dynamic rendering for all pages to prevent SSR context issues
+  trailingSlash: false,
 };
 
 export default nextConfig;
