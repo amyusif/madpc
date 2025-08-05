@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* React Day Picker CSS */
+@import "react-day-picker/style.css";
+
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here.
 All colors MUST be HSL.
 */
