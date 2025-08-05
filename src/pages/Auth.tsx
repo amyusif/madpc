@@ -27,10 +27,15 @@ export default function Auth() {
   // Redirect to dashboard when user is authenticated
   useEffect(() => {
     if (user && !authLoading) {
-      navigateTo("/dashboard", {
+      // Get the intended destination from sessionStorage or default to dashboard
+      const intendedPath =
+        sessionStorage.getItem("intendedPath") || "/dashboard";
+      sessionStorage.removeItem("intendedPath"); // Clean up
+
+      navigateTo(intendedPath, {
         replace: true,
         showToast: true,
-        loadingText: "Redirecting to dashboard...",
+        loadingText: "Redirecting...",
       });
     }
   }, [user, authLoading, navigateTo]);

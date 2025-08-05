@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { PageLoading } from "@/components/ui/loading";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -11,18 +12,32 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
-    if (!user) {
-      router.push("/auth");
-    }
-  }, [user, router]);
+    // Only redirect if we're done loading and there's no user
+    if (!loading && !user) {
+      console.log("No user found, redirecting to auth");
 
-  // If not authenticated, redirect immediately without showing loading
-  if (!user) {
-    router.push("/auth");
-    return null;
+      // Store the current path so we can redirect back after login
+      if (pathname !== "/" && pathname !== "/auth") {
+        sessionStorage.setItem("intendedPath", pathname);
+      }
+
+      router.replace("/");
+    }
+  }, [user, loading, router, pathname]);
+
+  // Show loading while checking authentication
+  if (loading) {
+    return <PageLoading text="Checking authentication..." />;
   }
 
+  // If not authenticated after loading, show loading while redirecting
+  if (!user) {
+    return <PageLoading text="Redirecting to login..." />;
+  }
+
+  // User is authenticated, show the protected content
   return <>{children}</>;
 }

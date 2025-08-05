@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { ClientProviders } from "./providers";
 import { NavigationProgress } from "@/components/NavigationProgress";
+import { SessionManager } from "@/components/SessionManager";
 
 export const metadata: Metadata = {
   title: "MADPC - Police Command System",
@@ -17,7 +18,10 @@ export default function RootLayout({
     <html lang="en">
       <body className="bg-background text-foreground">
         <NavigationProgress />
-        <ClientProviders>{children}</ClientProviders>
+        <ClientProviders>
+          <SessionManager />
+          {children}
+        </ClientProviders>
       </body>
     </html>
   );

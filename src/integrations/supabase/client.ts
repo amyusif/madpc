@@ -14,6 +14,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
+    storage: typeof window !== "undefined" ? window.localStorage : undefined,
+    storageKey: "madpc-auth-token",
+    flowType: "pkce",
   },
   realtime: {
     params: {
