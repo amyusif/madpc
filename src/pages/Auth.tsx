@@ -18,7 +18,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigation } from "@/hooks/useNavigation";
 import { PageLoading, ButtonLoading } from "@/components/ui/loading";
-import { sessionUtils } from "@/integrations/supabase/client";
 
 export default function Auth() {
   const router = useRouter();
@@ -29,22 +28,16 @@ export default function Auth() {
   // Redirect to dashboard when user is authenticated
   useEffect(() => {
     if (user && !authLoading) {
-      // Add a small delay to ensure auth state is stable
-      const timer = setTimeout(() => {
-        // Get the intended destination from sessionStorage or default to dashboard
-        const intendedPath =
-          sessionStorage.getItem("intendedPath") || "/dashboard";
-        sessionStorage.removeItem("intendedPath"); // Clean up
+      // Get the intended destination from sessionStorage or default to dashboard
+      const intendedPath =
+        sessionStorage.getItem("intendedPath") || "/dashboard";
+      sessionStorage.removeItem("intendedPath"); // Clean up
 
-        console.log("Auth successful, redirecting to:", intendedPath);
-        navigateTo(intendedPath, {
-          replace: true,
-          showToast: false, // Disable toast to reduce noise
-          loadingText: "Redirecting...",
-        });
-      }, 100);
-
-      return () => clearTimeout(timer);
+      navigateTo(intendedPath, {
+        replace: true,
+        showToast: true,
+        loadingText: "Redirecting...",
+      });
     }
   }, [user, authLoading, navigateTo]);
 
@@ -59,9 +52,6 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      // Clear any stale session data before login
-      sessionUtils.clearStaleSession();
-
       await signIn(loginData.email, loginData.password);
 
       toast({
@@ -85,8 +75,8 @@ export default function Auth() {
     }
   };
 
-  // Show loading screen when authenticating or when user is found
-  if (authLoading || (user && !authLoading)) {
+  // Show loading screen when authenticating or navigating
+  if (authLoading || (user && !authLoading) || isNavigating) {
     return (
       <PageLoading
         text={

@@ -8,12 +8,12 @@ const supabaseAnonKey =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJodnplZ2FmdHd5cWVpZ2p4dm9rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI5Njg1NzMsImV4cCI6MjA2ODU0NDU3M30.81MwyyxADYyMHijUAHxL7cGXqAjgI4Qy93Y7WYT5MfQ";
 
-// Create Supabase client
+// Create stable Supabase client with proper session management
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true,
+    autoRefreshToken: true, // Enable auto refresh for stable sessions
+    persistSession: true, // Enable session persistence
+    detectSessionInUrl: false, // Disable to prevent session reset bug (v2.66.1+)
     storage: typeof window !== "undefined" ? window.localStorage : undefined,
     storageKey: "madpc-auth-token",
     flowType: "pkce",
@@ -24,6 +24,61 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     },
   },
 });
+
+// Session management utilities
+export const sessionUtils = {
+  // Clear stale session data and cache
+  clearStaleSession: () => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("madpc-auth-token");
+      localStorage.removeItem("sb-madpc-auth-token");
+
+      // Clear any other auth-related items
+      Object.keys(localStorage).forEach((key) => {
+        if (
+          key.includes("supabase") ||
+          key.includes("auth") ||
+          key.includes("madpc")
+        ) {
+          localStorage.removeItem(key);
+        }
+      });
+
+      // Clear sessionStorage to prevent cache persistence
+      sessionStorage.clear();
+
+      // Clear browser cache
+      if ("caches" in window) {
+        caches
+          .keys()
+          .then((names) => {
+            names.forEach((name) => {
+              caches.delete(name);
+            });
+          })
+          .catch(console.error);
+      }
+
+      console.log("Cleared stale session data and cache");
+    }
+  },
+
+  // Debug session state
+  debugSession: async () => {
+    if (typeof window !== "undefined") {
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
+      console.log("Current session:", session);
+      console.log("Session error:", error);
+      console.log(
+        "LocalStorage auth data:",
+        localStorage.getItem("madpc-auth-token")
+      );
+    }
+  },
+};
 
 // Database types for TypeScript
 export interface Personnel {

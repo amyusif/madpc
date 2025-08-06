@@ -69,25 +69,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     getInitialSession();
 
-    // Listen for auth changes
+    // Listen for auth changes - clean, non-async handler
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
 
       console.log("Auth state change:", event, session?.user?.email);
 
-      setSession(session);
-      setUser(session?.user ?? null);
-
-      if (session?.user) {
-        await fetchProfile(session.user.id);
-      } else {
+      // Handle auth events synchronously to avoid deadlocks
+      if (event === "SIGNED_IN" && session) {
+        setSession(session);
+        setUser(session.user);
+        setLoading(false);
+        // Fetch profile asynchronously without blocking
+        fetchProfile(session.user.id).catch(console.error);
+      } else if (event === "SIGNED_OUT") {
+        setSession(null);
+        setUser(null);
         setProfile(null);
+        setLoading(false);
+      } else if (event === "TOKEN_REFRESHED" && session) {
+        setSession(session);
+        setUser(session.user);
+        // Don't change loading state for token refresh
+      } else if (event === "INITIAL_SESSION") {
+        // Handle initial session properly
+        if (session) {
+          setSession(session);
+          setUser(session.user);
+          fetchProfile(session.user.id).catch(console.error);
+        }
+        setLoading(false);
       }
-
-      // Set loading to false after any auth event
-      setLoading(false);
     });
 
     return () => {
@@ -141,7 +155,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       setLoading(true);
-      const { error } = await supabase.auth.signOut();
+
+      // Clear session data first
+      setSession(null);
+      setUser(null);
+      setProfile(null);
+
+      // Clear all localStorage and sessionStorage
+      if (typeof window !== "undefined") {
+        // Clear auth-related localStorage
+        localStorage.removeItem("madpc-auth-token");
+        localStorage.removeItem("sb-madpc-auth-token");
+
+        // Clear all supabase and auth related items
+        Object.keys(localStorage).forEach((key) => {
+          if (
+            key.includes("supabase") ||
+            key.includes("auth") ||
+            key.includes("madpc")
+          ) {
+            localStorage.removeItem(key);
+          }
+        });
+
+        // Clear sessionStorage to prevent cache persistence
+        sessionStorage.clear();
+
+        // Clear any cached data in memory
+        if ("caches" in window) {
+          caches.keys().then((names) => {
+            names.forEach((name) => {
+              caches.delete(name);
+            });
+          });
+        }
+      }
+
+      // Sign out from Supabase with scope 'local' to prevent server-side cache
+      const { error } = await supabase.auth.signOut({ scope: "local" });
       if (error) throw error;
     } catch (error: any) {
       throw new Error(error.message || "Failed to sign out");
