@@ -2,6 +2,7 @@ import { useState } from "react";
 import { supabaseHelpers } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAppData } from "@/hooks/useAppData";
+import { useAutoRefresh } from "@/hooks/useRefresh";
 import {
   Dialog,
   DialogContent,
@@ -41,6 +42,7 @@ export default function AddCaseModal({
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const { refreshCases } = useAppData();
+  const triggerAutoRefresh = useAutoRefresh();
 
   const resetForm = () => {
     setFormData({
@@ -89,12 +91,13 @@ export default function AddCaseModal({
       });
       resetForm();
 
-      // Add delay before closing modal to ensure toast is visible
-      setTimeout(() => {
-        onOpenChange(false);
-        if (onCaseAdded) onCaseAdded();
-      }, 500);
+      // Close modal and refresh data
+      onOpenChange(false);
+      if (onCaseAdded) onCaseAdded();
       await refreshCases();
+
+      // Trigger auto-refresh for other components
+      triggerAutoRefresh();
     } catch (error: any) {
       toast({
         title: "Error",

@@ -18,6 +18,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { supabaseHelpers } from "@/integrations/supabase/client";
 import { useAppData } from "@/hooks/useAppData";
+import { useAutoRefresh } from "@/hooks/useRefresh";
 import { Loader2, UserPlus } from "lucide-react";
 
 interface AddPersonnelModalProps {
@@ -32,6 +33,7 @@ export default function AddPersonnelModal({
   onPersonnelAdded,
 }: AddPersonnelModalProps) {
   const { toast } = useToast();
+  const triggerAutoRefresh = useAutoRefresh();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     badgeNumber: "",
@@ -100,10 +102,7 @@ export default function AddPersonnelModal({
 
       console.log("Toast notification sent for successful personnel creation");
 
-      // Add a small delay before closing modal to ensure toast is visible
-      setTimeout(() => {
-        onOpenChange(false);
-      }, 500);
+      // Reset form data
       setFormData({
         badgeNumber: "",
         firstName: "",
@@ -119,8 +118,14 @@ export default function AddPersonnelModal({
         childrenCount: "",
         noChildren: false,
       });
+
+      // Close modal and trigger refresh
+      onOpenChange(false);
       if (onPersonnelAdded) onPersonnelAdded();
       await refreshPersonnel();
+
+      // Trigger auto-refresh for other components
+      triggerAutoRefresh();
     } catch (error: any) {
       let errorMessage =
         error.message ||

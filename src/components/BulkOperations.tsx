@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabaseHelpers } from "@/integrations/supabase/client";
+import { useAutoRefresh } from "@/hooks/useRefresh";
 import { exportToCSV, exportToExcel, exportToPDF } from "@/utils/exportUtils";
 import type { Personnel } from "@/integrations/supabase/client";
 
@@ -59,6 +60,7 @@ export default function BulkOperations({
   const [showStatusDialog, setShowStatusDialog] = useState(false);
   const [newStatus, setNewStatus] = useState<string>("");
   const { toast } = useToast();
+  const triggerAutoRefresh = useAutoRefresh();
 
   const isAllSelected =
     selectedPersonnel.length === allPersonnel.length && allPersonnel.length > 0;
@@ -96,6 +98,9 @@ export default function BulkOperations({
       onSelectionChange([]);
       await onRefresh();
       setShowDeleteDialog(false);
+
+      // Trigger auto-refresh for other components
+      triggerAutoRefresh();
     } catch (error: any) {
       console.error("Error deleting personnel:", error);
       toast({
@@ -138,6 +143,9 @@ export default function BulkOperations({
       await onRefresh();
       setShowStatusDialog(false);
       setNewStatus("");
+
+      // Trigger auto-refresh for other components
+      triggerAutoRefresh();
     } catch (error: any) {
       console.error("Error updating personnel status:", error);
       toast({

@@ -112,6 +112,16 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       // Start with no loading state, fetch data in background
       setLoading(false);
       refreshData();
+
+      // Set up periodic refresh every 30 seconds
+      const intervalId = setInterval(() => {
+        console.log("Auto-refreshing data...");
+        refreshData();
+      }, 30000); // 30 seconds
+
+      return () => {
+        clearInterval(intervalId);
+      };
     } else {
       // Clear data when user logs out
       setPersonnel([]);

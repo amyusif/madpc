@@ -43,6 +43,7 @@ import PersonnelFilters, {
   PersonnelFilters as FilterType,
 } from "@/components/PersonnelFilters";
 import BulkOperations from "@/components/BulkOperations";
+import { PersonnelRefreshButton } from "@/components/RefreshIndicator";
 import type { Personnel } from "@/integrations/supabase/client";
 
 interface PersonnelListProps {
@@ -293,6 +294,7 @@ export default function PersonnelList({ onAddPersonnel }: PersonnelListProps) {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <PersonnelRefreshButton />
           <Button
             variant="outline"
             onClick={() => setImportModalOpen(true)}

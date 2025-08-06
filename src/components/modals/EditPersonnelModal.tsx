@@ -18,6 +18,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { supabaseHelpers } from "@/integrations/supabase/client";
 import { useAppData } from "@/hooks/useAppData";
+import { useAutoRefresh } from "@/hooks/useRefresh";
 import { Loader2, Edit, X } from "lucide-react";
 import type { Personnel } from "@/integrations/supabase/client";
 
@@ -36,6 +37,7 @@ export default function EditPersonnelModal({
 }: EditPersonnelModalProps) {
   const { toast } = useToast();
   const { refreshPersonnel } = useAppData();
+  const triggerAutoRefresh = useAutoRefresh();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     badgeNumber: "",
@@ -206,6 +208,9 @@ export default function EditPersonnelModal({
       onOpenChange(false);
       if (onPersonnelUpdated) onPersonnelUpdated();
       await refreshPersonnel();
+
+      // Trigger auto-refresh for other components
+      triggerAutoRefresh();
     } catch (error: any) {
       let errorMessage =
         error.message ||

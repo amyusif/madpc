@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/hooks/useAuth";
 import { AppDataProvider } from "@/hooks/useAppData";
+import { RefreshProvider } from "@/hooks/useRefresh";
 import { LoadingProvider } from "@/contexts/LoadingContext";
 
 const queryClient = new QueryClient();
@@ -16,11 +17,13 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
       <LoadingProvider>
         <AuthProvider>
           <AppDataProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              {children}
-            </TooltipProvider>
+            <RefreshProvider>
+              <TooltipProvider>
+                <Toaster />
+                <Sonner />
+                {children}
+              </TooltipProvider>
+            </RefreshProvider>
           </AppDataProvider>
         </AuthProvider>
       </LoadingProvider>

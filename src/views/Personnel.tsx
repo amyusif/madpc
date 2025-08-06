@@ -1,6 +1,7 @@
 import { useState } from "react";
 import AddPersonnelModal from "@/components/modals/AddPersonnelModal";
 import PersonnelList from "@/components/PersonnelList";
+import { PersonnelRefreshButton } from "@/components/RefreshIndicator";
 import { useAppData } from "@/hooks/useAppData";
 import { useToast } from "@/hooks/use-toast";
 
