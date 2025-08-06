@@ -1,15 +1,14 @@
 "use client";
 
 import dynamicImport from "next/dynamic";
-import { PageLoading } from "@/components/ui/loading";
 
-// Force dynamic rendering
+// Force dynamic rendering to prevent SSR issues
 export const dynamic = "force-dynamic";
 
-// Dynamically import Auth to prevent SSR issues with context providers
+// Dynamically import Auth with SSR disabled to prevent build errors
 const Auth = dynamicImport(() => import("@/views/Auth"), {
   ssr: false,
-  loading: () => <PageLoading text="Loading authentication..." />,
+  loading: () => null, // No loading component to prevent SSR issues
 });
 
 export default function Home() {

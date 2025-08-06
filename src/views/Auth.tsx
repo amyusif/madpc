@@ -20,7 +20,15 @@ import { useNavigation } from "@/hooks/useNavigation";
 import { PageLoading, ButtonLoading } from "@/components/ui/loading";
 import { sessionUtils } from "@/integrations/supabase/client";
 
+// SSR compatibility check
+const isClient = typeof window !== "undefined";
+
 export default function Auth() {
+  // Return null during SSR to prevent hydration issues
+  if (!isClient) {
+    return null;
+  }
+
   const router = useRouter();
   const { signIn, user, loading: authLoading } = useAuth();
   const { toast } = useToast();

@@ -3,13 +3,20 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { PageLoading } from "@/components/ui/loading";
+
+// SSR compatibility check
+const isClient = typeof window !== "undefined";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
+  // Return null during SSR to prevent hydration issues
+  if (!isClient) {
+    return null;
+  }
+
   const { user, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -32,12 +39,12 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   // Show loading while checking authentication
   if (loading) {
-    return <PageLoading text="Checking authentication..." />;
+    return null; // No loading screen for SSR compatibility
   }
 
-  // If not authenticated after loading, show loading while redirecting
+  // If not authenticated after loading, redirect immediately
   if (!user) {
-    return <PageLoading text="Redirecting to login..." />;
+    return null; // No loading screen for SSR compatibility
   }
 
   // User is authenticated, show the protected content
