@@ -4,6 +4,27 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Plus,
   Search,
   FileText,
@@ -13,6 +34,8 @@ import {
   Calendar,
   User,
   AlertTriangle,
+  MoreHorizontal,
+  Filter,
 } from "lucide-react";
 import AddCaseModal from "@/components/modals/AddCaseModal";
 import DeleteCaseModal from "@/components/modals/DeleteCaseModal";
@@ -28,6 +51,8 @@ export default function Cases() {
     case_title: string;
   } | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const { toast } = useToast();
 
   // Handle delete case click
@@ -40,14 +65,21 @@ export default function Cases() {
     setShowDeleteModal(true);
   };
 
-  // Filter cases based on search term
-  const filteredCases = cases.filter(
-    (caseItem) =>
+  // Filter cases based on search term, status, and priority
+  const filteredCases = cases.filter((caseItem) => {
+    const matchesSearch =
       caseItem.case_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
       caseItem.case_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       caseItem.case_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      caseItem.reported_by.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+      caseItem.reported_by.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesStatus =
+      statusFilter === "all" || caseItem.status === statusFilter;
+    const matchesPriority =
+      priorityFilter === "all" || caseItem.priority === priorityFilter;
+
+    return matchesSearch && matchesStatus && matchesPriority;
+  });
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -75,15 +107,30 @@ export default function Cases() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "open":
-        return "bg-blue-100 text-blue-800";
+        return "bg-blue-500 text-white";
       case "in_progress":
-        return "bg-purple-100 text-purple-800";
+        return "bg-purple-500 text-white";
       case "closed":
-        return "bg-green-100 text-green-800";
+        return "bg-orange-500 text-white";
       case "archived":
-        return "bg-gray-100 text-gray-800";
+        return "bg-green-500 text-white";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-gray-500 text-white";
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case "open":
+        return "Open";
+      case "in_progress":
+        return "In progress";
+      case "closed":
+        return "Closed";
+      case "archived":
+        return "Resolved";
+      default:
+        return status;
     }
   };
 
@@ -107,117 +154,206 @@ export default function Cases() {
         </Button>
       </div>
 
-      {/* Search Bar */}
-      <div className="flex items-center gap-4">
+      {/* Search and Filters */}
+      <div className="flex items-center gap-4 flex-wrap">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search cases..."
+            placeholder="Search Tickets"
             className="pl-9"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
+
+        <div className="flex items-center gap-2">
+          <Filter className="w-4 h-4 text-muted-foreground" />
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="All Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="open">Open</SelectItem>
+              <SelectItem value="in_progress">In Progress</SelectItem>
+              <SelectItem value="closed">Closed</SelectItem>
+              <SelectItem value="archived">Resolved</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Priority" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Priority</SelectItem>
+              <SelectItem value="urgent">Urgent</SelectItem>
+              <SelectItem value="high">High</SelectItem>
+              <SelectItem value="medium">Medium</SelectItem>
+              <SelectItem value="low">Low</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      {/* Cases List */}
-      {filteredCases.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <FileText className="w-16 h-16 text-muted-foreground/50 mb-6" />
-            <h3 className="text-lg font-semibold mb-2">
+      {/* Cases Table */}
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        {filteredCases.length === 0 ? (
+          <div className="p-12 text-center">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FileText className="w-8 h-8 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
               {cases.length === 0 ? "No Cases Found" : "No Search Results"}
             </h3>
-            <p className="text-muted-foreground mb-6 max-w-md">
+            <p className="text-gray-600 mb-6">
               {cases.length === 0
                 ? "Get started by logging your first case. Track investigations, assign officers, and monitor case status."
-                : "Try adjusting your search terms to find what you're looking for."}
+                : "Try adjusting your search terms or filters."}
             </p>
-            {/* No 'New Case' button here since modal is handled above */}
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-4">
-          {filteredCases.map((caseItem) => (
-            <Card
-              key={caseItem.id}
-              className="hover:shadow-md transition-shadow"
-            >
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  {/* Left side - Case info */}
-                  <div className="flex-1">
-                    <div className="flex items-center gap-4 mb-3">
-                      <div className="flex items-center gap-2">
-                        <FileText className="w-5 h-5 text-primary" />
-                        <h3 className="text-lg font-semibold">
-                          {caseItem.case_number}
-                        </h3>
-                      </div>
-                      <Badge className={getPriorityColor(caseItem.priority)}>
-                        {caseItem.priority.charAt(0).toUpperCase() +
-                          caseItem.priority.slice(1)}
-                      </Badge>
-                      <Badge className={getStatusColor(caseItem.status)}>
-                        {caseItem.status === "in_progress"
-                          ? "In Progress"
-                          : caseItem.status.charAt(0).toUpperCase() +
-                            caseItem.status.slice(1)}
-                      </Badge>
-                    </div>
-
-                    <h4 className="text-base font-medium mb-2">
+            {cases.length === 0 && (
+              <Button
+                onClick={() => setShowAddCaseModal(true)}
+                className="gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Add Case
+              </Button>
+            )}
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-gray-50">
+                <TableHead className="w-[100px] font-semibold text-gray-700">
+                  ID
+                </TableHead>
+                <TableHead className="font-semibold text-gray-700">
+                  Priority
+                </TableHead>
+                <TableHead className="font-semibold text-gray-700">
+                  Assignee
+                </TableHead>
+                <TableHead className="font-semibold text-gray-700">
+                  Description
+                </TableHead>
+                <TableHead className="font-semibold text-gray-700">
+                  Status
+                </TableHead>
+                <TableHead className="font-semibold text-gray-700">
+                  Requested by
+                </TableHead>
+                <TableHead className="font-semibold text-gray-700">
+                  Created on
+                </TableHead>
+                <TableHead className="font-semibold text-gray-700">
+                  Completion Date
+                </TableHead>
+                <TableHead className="w-[50px]"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredCases.map((caseItem) => (
+                <TableRow key={caseItem.id} className="hover:bg-gray-50">
+                  <TableCell className="font-medium text-blue-600">
+                    {caseItem.case_number}
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={getPriorityColor(caseItem.priority)}>
+                      {caseItem.priority.charAt(0).toUpperCase() +
+                        caseItem.priority.slice(1)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-gray-900">
+                    {caseItem.assigned_to || "Assignee Name"}
+                  </TableCell>
+                  <TableCell className="max-w-[300px]">
+                    <div className="text-gray-900 font-medium">
                       {caseItem.case_title}
-                    </h4>
-
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-2">
-                        <AlertTriangle className="w-4 h-4" />
-                        <span>Type: {caseItem.case_type}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <User className="w-4 h-4" />
-                        <span>Reporter: {caseItem.reported_by}</span>
-                      </div>
-                      {caseItem.assigned_to && (
-                        <div className="flex items-center gap-2">
-                          <User className="w-4 h-4" />
-                          <span>Assigned to: {caseItem.assigned_to}</span>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4" />
-                        <span>
-                          Created:{" "}
-                          {new Date(caseItem.created_at).toLocaleDateString()}
-                        </span>
-                      </div>
                     </div>
-                  </div>
-
-                  {/* Right side - Actions */}
-                  <div className="flex items-center gap-2 ml-4">
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                      <Eye className="w-4 h-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                      onClick={() => handleDeleteClick(caseItem)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+                    <div className="text-sm text-gray-500 truncate">
+                      {caseItem.description}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          className={`${getStatusColor(
+                            caseItem.status
+                          )} hover:opacity-80 px-3 py-1 rounded-md text-sm font-medium`}
+                        >
+                          {getStatusText(caseItem.status)}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem>Open</DropdownMenuItem>
+                        <DropdownMenuItem>In progress</DropdownMenuItem>
+                        <DropdownMenuItem>Resolved</DropdownMenuItem>
+                        <DropdownMenuItem>Closed</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                  <TableCell className="text-gray-900">
+                    {caseItem.reported_by}
+                  </TableCell>
+                  <TableCell className="text-gray-900">
+                    {new Date(caseItem.created_at).toLocaleDateString("en-US", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </TableCell>
+                  <TableCell className="text-gray-900">
+                    {caseItem.status === "closed" ||
+                    caseItem.status === "archived"
+                      ? new Date(caseItem.updated_at).toLocaleDateString(
+                          "en-US",
+                          {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                          }
+                        )
+                      : "-"}
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 hover:bg-gray-100"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem>
+                          <Eye className="mr-2 h-4 w-4" />
+                          View
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-red-600"
+                          onClick={() => handleDeleteClick(caseItem)}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </div>
 
       <AddCaseModal
         open={showAddCaseModal}

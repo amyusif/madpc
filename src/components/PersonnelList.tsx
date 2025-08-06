@@ -240,12 +240,9 @@ export default function PersonnelList({ onAddPersonnel }: PersonnelListProps) {
 
   // Handle personnel updated
   const handlePersonnelUpdated = async () => {
-    await refreshPersonnel();
-    toast({
-      title: "✅ Personnel Updated",
-      description: "Personnel information has been successfully updated.",
-      duration: 4000,
-    });
+    // The EditPersonnelModal already handles the refresh and toast
+    // This is just a callback to know the update completed
+    console.log("Personnel update completed, modal closed");
   };
 
   // Handle sorting

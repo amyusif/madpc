@@ -195,9 +195,12 @@ export default function EditPersonnelModal({
 
       // Update personnel in Supabase
       console.log("Attempting to update personnel:", personnelData);
-      await supabaseHelpers.updatePersonnel(personnel.id, personnelData);
+      const updatedPersonnel = await supabaseHelpers.updatePersonnel(
+        personnel.id,
+        personnelData
+      );
 
-      console.log("Personnel updated successfully");
+      console.log("Personnel updated successfully:", updatedPersonnel);
       toast({
         title: "✅ Personnel Updated Successfully!",
         description: `${formData.firstName} ${formData.lastName}'s information has been updated`,
@@ -205,11 +208,18 @@ export default function EditPersonnelModal({
         className: "bg-green-50 border-green-200",
       });
 
+      // Close modal first
       onOpenChange(false);
-      if (onPersonnelUpdated) onPersonnelUpdated();
+
+      // Refresh personnel data to get the latest updates
+      console.log("Refreshing personnel data after update...");
       await refreshPersonnel();
 
-      // Trigger auto-refresh for other components
+      // Notify parent component
+      if (onPersonnelUpdated) onPersonnelUpdated();
+
+      // Trigger auto-refresh for other components (dashboard, stats, etc.)
+      console.log("Triggering auto-refresh for other components...");
       triggerAutoRefresh();
     } catch (error: any) {
       let errorMessage =

@@ -86,10 +86,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfile(null);
       }
 
-      // Only set loading to false after initial load
-      if (event !== "INITIAL_SESSION") {
-        setLoading(false);
-      }
+      // Set loading to false after any auth event
+      setLoading(false);
     });
 
     return () => {
@@ -129,14 +127,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error("Authentication failed:", error.message);
+        setLoading(false); // Only set loading false on error
         throw error;
       }
 
-      // The auth state change listener will handle setting the user state
+      // The auth state change listener will handle setting the user state and loading to false
     } catch (error: any) {
-      throw new Error(error.message || "Failed to sign in");
-    } finally {
       setLoading(false);
+      throw new Error(error.message || "Failed to sign in");
     }
   };
 

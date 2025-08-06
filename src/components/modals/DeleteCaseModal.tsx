@@ -9,6 +9,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useAppData } from "@/hooks/useAppData";
+import { useAutoRefresh } from "@/hooks/useRefresh";
 import { supabaseHelpers } from "@/integrations/supabase/client";
 import { AlertTriangle, Loader2, Trash2 as TrashIcon } from "lucide-react";
 
@@ -29,6 +31,8 @@ export default function DeleteCaseModal({
 }: DeleteCaseModalProps) {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const { refreshCases } = useAppData();
+  const triggerAutoRefresh = useAutoRefresh();
 
   const handleDelete = async () => {
     if (!caseData) return;
@@ -49,6 +53,12 @@ export default function DeleteCaseModal({
         duration: 5000,
         className: "bg-green-50 border-green-200",
       });
+
+      // Refresh cases data immediately
+      await refreshCases();
+
+      // Trigger auto-refresh for other components
+      triggerAutoRefresh();
 
       // Add delay before closing modal to ensure toast is visible
       setTimeout(() => {

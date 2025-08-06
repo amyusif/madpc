@@ -28,16 +28,22 @@ export default function Auth() {
   // Redirect to dashboard when user is authenticated
   useEffect(() => {
     if (user && !authLoading) {
-      // Get the intended destination from sessionStorage or default to dashboard
-      const intendedPath =
-        sessionStorage.getItem("intendedPath") || "/dashboard";
-      sessionStorage.removeItem("intendedPath"); // Clean up
+      // Add a small delay to ensure auth state is stable
+      const timer = setTimeout(() => {
+        // Get the intended destination from sessionStorage or default to dashboard
+        const intendedPath =
+          sessionStorage.getItem("intendedPath") || "/dashboard";
+        sessionStorage.removeItem("intendedPath"); // Clean up
 
-      navigateTo(intendedPath, {
-        replace: true,
-        showToast: true,
-        loadingText: "Redirecting...",
-      });
+        console.log("Auth successful, redirecting to:", intendedPath);
+        navigateTo(intendedPath, {
+          replace: true,
+          showToast: false, // Disable toast to reduce noise
+          loadingText: "Redirecting...",
+        });
+      }, 100);
+
+      return () => clearTimeout(timer);
     }
   }, [user, authLoading, navigateTo]);
 
@@ -75,8 +81,8 @@ export default function Auth() {
     }
   };
 
-  // Show loading screen when authenticating or navigating
-  if (authLoading || (user && !authLoading) || isNavigating) {
+  // Show loading screen when authenticating or when user is found
+  if (authLoading || (user && !authLoading)) {
     return (
       <PageLoading
         text={

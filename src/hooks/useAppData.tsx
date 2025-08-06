@@ -33,7 +33,9 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
   const fetchPersonnel = async () => {
     try {
+      console.log("Fetching personnel from database...");
       const data = await supabaseHelpers.getPersonnel();
+      console.log(`Fetched ${data.length} personnel records`);
       setPersonnel(data);
     } catch (error: any) {
       console.error("Error fetching personnel:", error);
@@ -76,8 +78,11 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
   const refreshPersonnel = async () => {
     try {
+      console.log("Refreshing personnel data...");
       await fetchPersonnel();
+      console.log("Personnel data refreshed successfully");
     } catch (error: any) {
+      console.error("Failed to refresh personnel:", error);
       setError(error.message || "Failed to fetch personnel");
     }
   };

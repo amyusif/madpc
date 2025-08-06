@@ -16,29 +16,24 @@ export function useNavigation() {
       options?: { replace?: boolean; showToast?: boolean; loadingText?: string }
     ) => {
       try {
-        setLoadingText(options?.loadingText || "Navigating...");
-        setLoading(true);
+        console.log("Navigating to:", path);
 
         if (options?.showToast) {
           toast({
             title: "🔄 Navigating...",
             description: "Please wait while we load the page",
-            duration: 2000,
+            duration: 1000,
           });
         }
 
-        // Navigate immediately
+        // Navigate immediately without loading state conflicts
         if (options?.replace) {
           router.replace(path);
         } else {
           router.push(path);
         }
-
-        // Keep loading state for a bit to show feedback
-        setTimeout(() => setLoading(false), 800);
       } catch (error) {
         console.error("Navigation error:", error);
-        setLoading(false);
 
         toast({
           title: "❌ Navigation Failed",
@@ -47,27 +42,21 @@ export function useNavigation() {
         });
       }
     },
-    [router, toast, setLoading, setLoadingText]
+    [router, toast]
   );
 
   const goBack = useCallback(() => {
-    setLoading(true);
-    setLoadingText("Going back...");
     router.back();
-    setTimeout(() => setLoading(false), 500);
-  }, [router, setLoading, setLoadingText]);
+  }, [router]);
 
   const refresh = useCallback(() => {
-    setLoading(true);
-    setLoadingText("Refreshing...");
     router.refresh();
-    setTimeout(() => setLoading(false), 500);
-  }, [router, setLoading, setLoadingText]);
+  }, [router]);
 
   return {
     navigateTo,
     goBack,
     refresh,
-    isNavigating: isLoading,
+    isNavigating: false, // Simplified to prevent conflicts
   };
 }
