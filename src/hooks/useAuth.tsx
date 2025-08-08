@@ -8,6 +8,7 @@ interface Profile {
   badge_number?: string;
   role: "district_commander" | "unit_supervisor";
   phone?: string;
+  avatar_url?: string;
   created_at: string;
   updated_at: string;
 }

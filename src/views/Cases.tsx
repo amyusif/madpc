@@ -36,15 +36,21 @@ import {
   AlertTriangle,
   MoreHorizontal,
   Filter,
+  X,
 } from "lucide-react";
 import AddCaseModal from "@/components/modals/AddCaseModal";
 import DeleteCaseModal from "@/components/modals/DeleteCaseModal";
+import { CaseEvidenceUpload } from "@/components/CaseEvidenceUpload";
+import { CSVImportExport } from "@/components/CSVImportExport";
 import { useAppData } from "@/hooks/useAppData";
 import { useToast } from "@/hooks/use-toast";
+import { supabaseHelpers } from "@/integrations/supabase/client";
 export default function Cases() {
   const { cases, refreshCases, loading } = useAppData();
   const [showAddCaseModal, setShowAddCaseModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showEvidenceModal, setShowEvidenceModal] = useState(false);
+  const [selectedCase, setSelectedCase] = useState<any>(null);
   const [caseToDelete, setCaseToDelete] = useState<{
     id: string;
     case_number: string;
@@ -64,6 +70,74 @@ export default function Cases() {
     });
     setShowDeleteModal(true);
   };
+
+  // Handle view evidence click
+  const handleViewEvidence = (caseItem: any) => {
+    setSelectedCase(caseItem);
+    setShowEvidenceModal(true);
+  };
+
+  // Handle case import
+  const handleImportCases = async (data: any[]) => {
+    try {
+      for (const row of data) {
+        const caseData = {
+          case_number: row.case_number || row["Case Number"] || "",
+          case_title: row.case_title || row["Case Title"] || "",
+          case_type: row.case_type || row["Case Type"] || "",
+          description: row.description || row.Description || "",
+          priority: (row.priority || row.Priority || "medium") as
+            | "low"
+            | "medium"
+            | "high"
+            | "urgent",
+          status: (row.status || row.Status || "open") as
+            | "open"
+            | "in_progress"
+            | "closed"
+            | "archived",
+          assigned_to: row.assigned_to || row["Assigned To"] || "",
+          reported_by: row.reported_by || row["Reported By"] || "",
+        };
+
+        await supabaseHelpers.createCase(caseData);
+      }
+
+      await refreshCases();
+
+      toast({
+        title: "✅ Import Successful",
+        description: `Successfully imported ${data.length} case records`,
+        duration: 5000,
+      });
+    } catch (error) {
+      toast({
+        title: "Import Failed",
+        description: "Failed to import case data",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle case export
+  const handleExportCases = async () => {
+    return cases.map((c) => ({
+      case_number: c.case_number,
+      case_title: c.case_title,
+      case_type: c.case_type,
+      description: c.description,
+      priority: c.priority,
+      status: c.status,
+      assigned_to: c.assigned_to || "",
+      reported_by: c.reported_by,
+      created_at: c.created_at,
+      updated_at: c.updated_at,
+    }));
+  };
+
+  const caseImportTemplate = `case_number,case_title,case_type,description,priority,status,assigned_to,reported_by
+CAS001,Theft Investigation,Theft,Stolen vehicle reported,high,open,Officer Smith,John Doe
+CAS002,Fraud Case,Fraud,Credit card fraud investigation,medium,in_progress,Officer Johnson,Jane Smith`;
 
   // Filter cases based on search term, status, and priority
   const filteredCases = cases.filter((caseItem) => {
@@ -144,14 +218,22 @@ export default function Cases() {
             Track and manage investigation cases
           </p>
         </div>
-        <Button
-          type="button"
-          className="gap-2"
-          onClick={() => setShowAddCaseModal(true)}
-        >
-          <Plus className="w-4 h-4" />
-          Add Case
-        </Button>
+        <div className="flex items-center gap-3">
+          <CSVImportExport
+            entityType="cases"
+            onImportComplete={handleImportCases}
+            onExportRequest={handleExportCases}
+            importTemplate={caseImportTemplate}
+          />
+          <Button
+            type="button"
+            className="gap-2"
+            onClick={() => setShowAddCaseModal(true)}
+          >
+            <Plus className="w-4 h-4" />
+            Add Case
+          </Button>
+        </div>
       </div>
 
       {/* Search and Filters */}
@@ -334,6 +416,12 @@ export default function Cases() {
                           <Eye className="mr-2 h-4 w-4" />
                           View
                         </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleViewEvidence(caseItem)}
+                        >
+                          <FileText className="mr-2 h-4 w-4" />
+                          Evidence
+                        </DropdownMenuItem>
                         <DropdownMenuItem>
                           <Edit className="mr-2 h-4 w-4" />
                           Edit
@@ -367,6 +455,42 @@ export default function Cases() {
         onOpenChange={setShowDeleteModal}
         caseData={caseToDelete}
       />
+
+      {/* Evidence Modal */}
+      {selectedCase && (
+        <div
+          className={`fixed inset-0 z-50 ${
+            showEvidenceModal ? "block" : "hidden"
+          }`}
+        >
+          <div
+            className="fixed inset-0 bg-black/50"
+            onClick={() => setShowEvidenceModal(false)}
+          />
+          <div className="fixed inset-4 bg-white rounded-lg shadow-xl overflow-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold">
+                  Evidence - {selectedCase.case_number}
+                </h2>
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowEvidenceModal(false)}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+              <CaseEvidenceUpload
+                caseId={selectedCase.id}
+                caseNumber={selectedCase.case_number}
+                onEvidenceUpdate={() => {
+                  // Refresh case data if needed
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -105,45 +105,49 @@ export default function Auth() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-      <div className="w-full max-w-md space-y-6">
+    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 p-3 sm:p-4 lg:p-6">
+      <div className="w-full max-w-sm sm:max-w-md space-y-4 sm:space-y-6">
         {/* Header Section */}
-        <div className="text-center space-y-4">
+        <div className="text-center space-y-3 sm:space-y-4">
           <div className="flex justify-center">
             <Image
               src="/police logo.png"
               alt="Ghana Police Logo"
-              width={80}
-              height={80}
-              className="object-contain"
+              width={64}
+              height={64}
+              className="object-contain sm:w-20 sm:h-20"
             />
           </div>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">
+          <div className="space-y-2">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 leading-tight">
               Manso Adubia District Police Command
             </h1>
-            <p className="text-gray-600 mt-2">
+            <p className="text-sm sm:text-base text-gray-600">
               Sign in to access the command center
             </p>
           </div>
         </div>
 
         {/* Login Form */}
-        <Card className="shadow-lg">
-          <CardHeader className="text-center">
-            <CardTitle className="text-xl font-bold">Sign In</CardTitle>
+        <Card className="shadow-lg border-0 sm:border">
+          <CardHeader className="text-center pb-4 sm:pb-6">
+            <CardTitle className="text-lg sm:text-xl font-bold">
+              Sign In
+            </CardTitle>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
+          <CardContent className="px-4 sm:px-6">
+            <form onSubmit={handleLogin} className="space-y-4 sm:space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
+                <Label htmlFor="email" className="text-sm font-medium">
+                  Email Address
+                </Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
                     id="email"
                     type="email"
                     placeholder="Enter your email"
-                    className="pl-10"
+                    className="pl-10 h-11 sm:h-12 text-base"
                     value={loginData.email}
                     onChange={(e) =>
                       setLoginData({ ...loginData, email: e.target.value })
@@ -154,14 +158,16 @@ export default function Auth() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password" className="text-sm font-medium">
+                  Password
+                </Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
                     id="password"
                     type="password"
                     placeholder="Enter your password"
-                    className="pl-10"
+                    className="pl-10 h-11 sm:h-12 text-base"
                     value={loginData.password}
                     onChange={(e) =>
                       setLoginData({ ...loginData, password: e.target.value })
@@ -173,7 +179,7 @@ export default function Auth() {
 
               <Button
                 type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-700"
+                className="w-full bg-blue-600 hover:bg-blue-700 h-11 sm:h-12 text-base font-medium"
                 disabled={loading || isNavigating}
               >
                 {loading || isNavigating ? (
@@ -184,7 +190,7 @@ export default function Auth() {
               </Button>
             </form>
 
-            <div className="text-center mt-4 text-sm text-gray-600">
+            <div className="text-center mt-4 sm:mt-6 text-xs sm:text-sm text-gray-600">
               For demo access, contact your administrator
             </div>
           </CardContent>

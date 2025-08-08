@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { AppSidebar } from "./AppSidebar";
+import { MobileSidebar } from "./MobileSidebar";
+import { UserProfilePhotoUpload } from "./UserProfilePhotoUpload";
 import { RefreshCw, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -25,6 +27,7 @@ export function Layout({ children }: LayoutProps) {
   const { profile } = useAuth();
   const { refreshAll, isRefreshing } = useRefresh();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false);
 
   const handleLogoutClick = () => {
     setShowLogoutModal(true);
@@ -35,21 +38,46 @@ export function Layout({ children }: LayoutProps) {
   };
 
   return (
-    <div className="min-h-screen flex w-full">
-      {/* Sidebar */}
-      <div className="flex-shrink-0">
+    <div className="h-screen w-full flex overflow-hidden">
+      {/* Sidebar - Hidden on mobile, shown on desktop */}
+      <div className="hidden md:flex flex-shrink-0">
         <AppSidebar />
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 w-full">
         {/* Top Header */}
-        <header className="h-14 flex items-center justify-between px-4 border-b bg-background">
-          <div className="flex items-center gap-4">
-            {/* Sidebar toggle is now handled within the sidebar itself */}
+        <header className="h-14 flex items-center justify-between px-3 sm:px-4 lg:px-6 border-b bg-background flex-shrink-0">
+          <div className="flex items-center gap-2 sm:gap-4">
+            {/* Mobile menu button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden"
+              onClick={() => setShowMobileSidebar(true)}
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
+              </svg>
+            </Button>
+
+            {/* App title on mobile */}
+            <div className="md:hidden">
+              <h1 className="text-lg font-semibold">MADPC</h1>
+            </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <NotificationDropdown />
 
             <Button
@@ -70,13 +98,12 @@ export function Layout({ children }: LayoutProps) {
                   variant="ghost"
                   className="relative h-8 w-8 rounded-full"
                 >
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground">
-                      {profile?.full_name
-                        ? profile.full_name.charAt(0).toUpperCase()
-                        : "O"}
-                    </AvatarFallback>
-                  </Avatar>
+                  <UserProfilePhotoUpload
+                    currentPhotoUrl={profile?.avatar_url}
+                    size="sm"
+                    editable={false}
+                    showChangeButton={false}
+                  />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end" forceMount>
@@ -103,8 +130,16 @@ export function Layout({ children }: LayoutProps) {
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 bg-muted/20">{children}</main>
+        <main className="flex-1 bg-muted/20 overflow-auto p-3 sm:p-4 lg:p-6">
+          <div className="h-full w-full max-w-full">{children}</div>
+        </main>
       </div>
+
+      {/* Mobile Sidebar */}
+      <MobileSidebar
+        isOpen={showMobileSidebar}
+        onClose={() => setShowMobileSidebar(false)}
+      />
 
       {/* Logout Confirmation Modal */}
       <LogoutConfirmModal

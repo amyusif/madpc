@@ -56,9 +56,17 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const fetchDuties = async () => {
     try {
       const data = await supabaseHelpers.getDuties();
-      setDuties(data);
+      setDuties(data || []);
     } catch (error: any) {
       console.error("Error fetching duties:", error);
+      // If duties table doesn't exist, set empty array instead of throwing
+      if (error.message?.includes('relation "duties" does not exist')) {
+        console.warn(
+          "Duties table does not exist. Please run the database setup script."
+        );
+        setDuties([]);
+        return;
+      }
       throw error;
     }
   };
@@ -69,9 +77,28 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     setError(null);
 
     try {
-      // Fetch data in parallel without showing loading spinner
-      await Promise.all([fetchPersonnel(), fetchCases(), fetchDuties()]);
+      // Fetch data in parallel, but handle each separately to avoid one failure stopping all
+      const results = await Promise.allSettled([
+        fetchPersonnel(),
+        fetchCases(),
+        fetchDuties(),
+      ]);
+
+      // Check for any failures and log them
+      results.forEach((result, index) => {
+        if (result.status === "rejected") {
+          const dataType = ["personnel", "cases", "duties"][index];
+          console.error(`Failed to fetch ${dataType}:`, result.reason);
+        }
+      });
+
+      // Only set error if all requests failed
+      const allFailed = results.every((result) => result.status === "rejected");
+      if (allFailed) {
+        setError("Failed to fetch data from database");
+      }
     } catch (error: any) {
+      console.error("Unexpected error in refreshData:", error);
       setError(error.message || "Failed to fetch data");
     }
   };
@@ -99,7 +126,11 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     try {
       await fetchDuties();
     } catch (error: any) {
-      setError(error.message || "Failed to fetch duties");
+      console.error("Failed to refresh duties:", error);
+      // Don't set error state for duties table not existing
+      if (!error.message?.includes('relation "duties" does not exist')) {
+        setError(error.message || "Failed to fetch duties");
+      }
     }
   };
 

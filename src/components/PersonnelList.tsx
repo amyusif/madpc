@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { PersonnelPhotoUpload } from "@/components/PersonnelPhotoUpload";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,16 +30,13 @@ import {
   UserCheck,
   UserX,
   Loader2,
-  Download,
-  Upload,
 } from "lucide-react";
 import { useAppData } from "@/hooks/useAppData";
 import { useToast } from "@/hooks/use-toast";
 import { supabaseHelpers } from "@/integrations/supabase/client";
 import ViewPersonnelModal from "@/components/modals/ViewPersonnelModal";
 import EditPersonnelModal from "@/components/modals/EditPersonnelModal";
-import ExportModal from "@/components/modals/ExportModal";
-import ImportModal from "@/components/modals/ImportModal";
+
 import PersonnelFilters, {
   PersonnelFilters as FilterType,
 } from "@/components/PersonnelFilters";
@@ -56,8 +54,7 @@ export default function PersonnelList({ onAddPersonnel }: PersonnelListProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
-  const [exportModalOpen, setExportModalOpen] = useState(false);
-  const [importModalOpen, setImportModalOpen] = useState(false);
+
   const [personnelToDelete, setPersonnelToDelete] = useState<Personnel | null>(
     null
   );
@@ -293,22 +290,6 @@ export default function PersonnelList({ onAddPersonnel }: PersonnelListProps) {
         <div className="flex items-center gap-3">
           <PersonnelRefreshButton />
           <Button
-            variant="outline"
-            onClick={() => setImportModalOpen(true)}
-            className="gap-2"
-          >
-            <Upload className="w-4 h-4" />
-            Import
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => setExportModalOpen(true)}
-            className="gap-2"
-          >
-            <Download className="w-4 h-4" />
-            Export
-          </Button>
-          <Button
             onClick={onAddPersonnel}
             className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
           >
@@ -492,15 +473,18 @@ export default function PersonnelList({ onAddPersonnel }: PersonnelListProps) {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-3">
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage
-                            src=""
-                            alt={`${person.first_name} ${person.last_name}`}
-                          />
-                          <AvatarFallback className="bg-blue-100 text-blue-700 font-semibold">
-                            {getInitials(person.first_name, person.last_name)}
-                          </AvatarFallback>
-                        </Avatar>
+                        <PersonnelPhotoUpload
+                          personnelId={person.id}
+                          currentPhotoUrl={person.photo_url}
+                          badgeNumber={person.badge_number}
+                          fullName={`${person.first_name} ${person.last_name}`}
+                          onPhotoUpdate={(photoUrl) => {
+                            // Update the person's photo in the list
+                            refreshPersonnel();
+                          }}
+                          size="md"
+                          editable={true}
+                        />
                         <div>
                           <div className="text-sm font-medium text-gray-900">
                             {person.first_name} {person.last_name}
@@ -718,21 +702,6 @@ export default function PersonnelList({ onAddPersonnel }: PersonnelListProps) {
         onOpenChange={setEditModalOpen}
         personnel={selectedPersonnel}
         onPersonnelUpdated={handlePersonnelUpdated}
-      />
-
-      {/* Export Modal */}
-      <ExportModal
-        open={exportModalOpen}
-        onOpenChange={setExportModalOpen}
-        personnel={personnel}
-        selectedPersonnel={bulkSelectedPersonnel}
-      />
-
-      {/* Import Modal */}
-      <ImportModal
-        open={importModalOpen}
-        onOpenChange={setImportModalOpen}
-        onImportComplete={refreshPersonnel}
       />
     </div>
   );
