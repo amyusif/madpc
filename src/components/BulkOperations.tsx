@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import ComposeMessageModal from "@/components/modals/ComposeMessageModal";
 import {
   Select,
   SelectContent,
@@ -35,6 +36,7 @@ import {
   Edit,
   Loader2,
   X,
+  Mails,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabaseHelpers } from "@/integrations/supabase/client";
@@ -59,6 +61,7 @@ export default function BulkOperations({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showStatusDialog, setShowStatusDialog] = useState(false);
   const [newStatus, setNewStatus] = useState<string>("");
+  const [showCompose, setShowCompose] = useState(false);
   const { toast } = useToast();
   const triggerAutoRefresh = useAutoRefresh();
 
@@ -316,6 +319,22 @@ export default function BulkOperations({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* Notify via Email (opens compose modal) */}
+          <ComposeMessageModal
+            open={showCompose}
+            onOpenChange={setShowCompose}
+            selectedIds={selectedPersonnel.map((p) => p.id)}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowCompose(true)}
+            className="gap-2"
+          >
+            <Mails className="w-4 h-4" />
+            Notify
+          </Button>
 
           {/* Delete */}
           <Button

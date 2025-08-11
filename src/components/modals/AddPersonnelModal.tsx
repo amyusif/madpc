@@ -218,15 +218,19 @@ export default function AddPersonnelModal({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone</Label>
+                <Label htmlFor="phone">Phone Number</Label>
                 <Input
                   id="phone"
-                  placeholder="+233 XX XXX XXXX"
+                  type="tel"
+                  placeholder="+233XXXXXXXXX or 0XXXXXXXXX"
                   value={formData.phone}
                   onChange={(e) =>
                     setFormData({ ...formData, phone: e.target.value })
                   }
                 />
+                <p className="text-xs text-muted-foreground">
+                  Include country code for SMS notifications (e.g., +233 for Ghana)
+                </p>
               </div>
 
               <div className="space-y-2">

@@ -209,7 +209,7 @@ export default function Settings() {
             <div className="space-y-4">
               <Label className="text-base font-medium">Profile Photo</Label>
               <UserProfilePhotoUpload
-                currentPhotoUrl={avatarUrl}
+                currentPhotoUrl={avatarUrl ?? undefined}
                 onPhotoUpdate={handlePhotoUpdate}
                 size="xl"
                 editable={true}

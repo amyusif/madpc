@@ -55,51 +55,51 @@ export default function SendMessageModal({
     setLoading(true);
 
     try {
-      console.log("Sending message:", messageData);
-
       // Validate required fields
-      if (!messageData.title.trim()) {
-        throw new Error("Message title is required");
-      }
-      if (!messageData.message.trim()) {
-        throw new Error("Message content is required");
-      }
+      if (!messageData.title.trim()) throw new Error("Message title is required");
+      if (!messageData.message.trim()) throw new Error("Message content is required");
 
-      // Create an alert with type 'info' for messages
-      const alertPayload = {
-        title: messageData.title,
-        message: messageData.message,
-        type: "info" as const,
-        priority: messageData.priority as "low" | "medium" | "high" | "urgent",
-        status: "active" as const,
-        created_by: "current-user", // This should be the actual user ID
-      };
+      // Determine recipients
+      const all = personnel || [];
+      const ids =
+        messageData.recipients === "all"
+          ? all.map((p: any) => p.id)
+          : all
+              .filter((p: any) =>
+                (p.unit || "").toLowerCase().includes(messageData.recipients)
+              )
+              .map((p: any) => p.id);
 
-      const createdAlert = await supabaseHelpers.createAlert(alertPayload);
-      console.log("Message saved as alert with ID:", createdAlert.id);
+      if (ids.length === 0) throw new Error("No recipients found for selection");
+
+      // Send emails via notifications API
+      const res = await fetch("/api/notifications/personnel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          personnelIds: ids,
+          subject: messageData.title,
+          message: messageData.message,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to send message");
 
       toast({
-        title: "✅ Message Sent Successfully!",
-        description: `Your message "${messageData.title}" has been sent to ${
-          messageData.recipients === "all"
-            ? "all personnel"
-            : "selected recipients"
+        title: "✅ Message Sent",
+        description: `Sent to ${data.sent ?? ids.length} recipient(s)${
+          data.failed ? ", failed: " + data.failed : ""
         }`,
         duration: 5000,
       });
 
-      setMessageData({
-        title: "",
-        message: "",
-        priority: "medium",
-        recipients: "all",
-      });
+      setMessageData({ title: "", message: "", priority: "medium", recipients: "all" });
       onOpenChange(false);
     } catch (error: any) {
       console.error("Error sending message:", error);
       toast({
         title: "❌ Failed to Send Message",
-        description: error.message || "Something went wrong. Please try again.",
+        description: error?.message || "Something went wrong. Please try again.",
         variant: "destructive",
         duration: 6000,
       });
@@ -113,46 +113,41 @@ export default function SendMessageModal({
     setLoading(true);
 
     try {
-      console.log("Sending alert:", alertData);
+      if (!alertData.title.trim()) throw new Error("Alert title is required");
+      if (!alertData.message.trim()) throw new Error("Alert message is required");
 
-      // Validate required fields
-      if (!alertData.title.trim()) {
-        throw new Error("Alert title is required");
-      }
-      if (!alertData.message.trim()) {
-        throw new Error("Alert message is required");
-      }
+      // Broadcast to all personnel by default
+      const all = personnel || [];
+      const ids = all.map((p: any) => p.id);
+      if (ids.length === 0) throw new Error("No personnel to notify");
 
-      const alertPayload = {
-        title: alertData.title,
-        message: alertData.message,
-        type: alertData.type as "info" | "warning" | "error" | "success",
-        priority: alertData.priority as "low" | "medium" | "high" | "urgent",
-        status: "active" as const,
-        created_by: "current-user", // This should be the actual user ID
-      };
-
-      const createdAlert = await supabaseHelpers.createAlert(alertPayload);
-      console.log("Alert saved with ID:", createdAlert.id);
+      const res = await fetch("/api/notifications/personnel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          personnelIds: ids,
+          subject: alertData.title,
+          message: alertData.message,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to broadcast alert");
 
       toast({
-        title: "🚨 Alert Sent Successfully!",
-        description: `Your ${alertData.priority} priority alert "${alertData.title}" has been broadcast to all personnel`,
+        title: "🚨 Alert Broadcasted",
+        description: `Sent to ${data.sent ?? ids.length} personnel${
+          data.failed ? ", failed: " + data.failed : ""
+        }`,
         duration: 5000,
       });
 
-      setAlertData({
-        title: "",
-        message: "",
-        type: "info",
-        priority: "medium",
-      });
+      setAlertData({ title: "", message: "", type: "info", priority: "medium" });
       onOpenChange(false);
     } catch (error: any) {
       console.error("Error sending alert:", error);
       toast({
         title: "❌ Failed to Send Alert",
-        description: error.message || "Something went wrong. Please try again.",
+        description: error?.message || "Something went wrong. Please try again.",
         variant: "destructive",
         duration: 6000,
       });

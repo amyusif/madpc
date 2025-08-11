@@ -139,14 +139,14 @@ export default function Auth() {
             <form onSubmit={handleLogin} className="space-y-4 sm:space-y-5">
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium">
-                  Email Address
+                  Email or Username
                 </Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
                     id="email"
-                    type="email"
-                    placeholder="Enter your email"
+                    type="text"
+                    placeholder="Enter your email or username"
                     className="pl-10 h-11 sm:h-12 text-base"
                     value={loginData.email}
                     onChange={(e) =>

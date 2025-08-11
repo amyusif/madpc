@@ -101,6 +101,28 @@ export interface Personnel {
   updated_at: string;
 }
 
+// Optional: mirror column present in schema if used in components
+export interface Personnel {
+  id: string;
+  badge_number: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone?: string;
+  rank: string;
+  unit: string;
+  date_joined: string;
+  emergency_contacts: string[];
+  marital_status: string;
+  spouse?: string;
+  children_count?: number;
+  no_children?: boolean;
+  status: "active" | "inactive" | "suspended" | "retired";
+  created_at: string;
+  updated_at: string;
+  photo_url?: string | null;
+}
+
 export interface Case {
   id: string;
   case_number: string;
@@ -142,9 +164,15 @@ export interface Alert {
 }
 
 // Helper functions for common operations
+const useFirestore = () => (process.env.NEXT_PUBLIC_USE_FIRESTORE || "").toString() === "true";
+
 export const supabaseHelpers = {
   // Personnel operations
   async getPersonnel() {
+    if (useFirestore()) {
+      const { firestoreHelpers } = await import("@/integrations/firebase/helpers");
+      return firestoreHelpers.getPersonnel();
+    }
     const { data, error } = await supabase
       .from("personnel")
       .select("*")
@@ -157,6 +185,10 @@ export const supabaseHelpers = {
   async createPersonnel(
     personnel: Omit<Personnel, "id" | "created_at" | "updated_at">
   ) {
+    if (useFirestore()) {
+      const { firestoreHelpers } = await import("@/integrations/firebase/helpers");
+      return firestoreHelpers.createPersonnel(personnel);
+    }
     const { data, error } = await supabase
       .from("personnel")
       .insert([
@@ -177,6 +209,10 @@ export const supabaseHelpers = {
     personnelId: string,
     personnel: Partial<Omit<Personnel, "id" | "created_at">>
   ) {
+    if (useFirestore()) {
+      const { firestoreHelpers } = await import("@/integrations/firebase/helpers");
+      return firestoreHelpers.updatePersonnel(personnelId, personnel);
+    }
     const { data, error } = await supabase
       .from("personnel")
       .update({
@@ -192,6 +228,10 @@ export const supabaseHelpers = {
   },
 
   async deletePersonnel(personnelId: string) {
+    if (useFirestore()) {
+      const { firestoreHelpers } = await import("@/integrations/firebase/helpers");
+      return firestoreHelpers.deletePersonnel(personnelId);
+    }
     const { error } = await supabase
       .from("personnel")
       .delete()
@@ -203,6 +243,10 @@ export const supabaseHelpers = {
 
   // Cases operations
   async getCases() {
+    if (useFirestore()) {
+      const { firestoreHelpers } = await import("@/integrations/firebase/helpers");
+      return firestoreHelpers.getCases();
+    }
     const { data, error } = await supabase
       .from("cases")
       .select("*")
@@ -213,6 +257,10 @@ export const supabaseHelpers = {
   },
 
   async createCase(caseData: Omit<Case, "id" | "created_at" | "updated_at">) {
+    if (useFirestore()) {
+      const { firestoreHelpers } = await import("@/integrations/firebase/helpers");
+      return firestoreHelpers.createCase(caseData);
+    }
     const { data, error } = await supabase
       .from("cases")
       .insert([
@@ -230,6 +278,10 @@ export const supabaseHelpers = {
   },
 
   async deleteCase(caseId: string) {
+    if (useFirestore()) {
+      const { firestoreHelpers } = await import("@/integrations/firebase/helpers");
+      return firestoreHelpers.deleteCase(caseId);
+    }
     const { error } = await supabase.from("cases").delete().eq("id", caseId);
 
     if (error) throw error;
@@ -238,6 +290,10 @@ export const supabaseHelpers = {
 
   // Duties operations
   async getDuties() {
+    if (useFirestore()) {
+      const { firestoreHelpers } = await import("@/integrations/firebase/helpers");
+      return firestoreHelpers.getDuties();
+    }
     const { data, error } = await supabase
       .from("duties")
       .select("*")
@@ -248,6 +304,10 @@ export const supabaseHelpers = {
   },
 
   async createDuty(duty: Omit<Duty, "id" | "created_at" | "updated_at">) {
+    if (useFirestore()) {
+      const { firestoreHelpers } = await import("@/integrations/firebase/helpers");
+      return firestoreHelpers.createDuty(duty);
+    }
     const { data, error } = await supabase
       .from("duties")
       .insert([
@@ -264,7 +324,7 @@ export const supabaseHelpers = {
     return data as Duty;
   },
 
-  // Alerts operations
+  // Alerts operations (left on Supabase for now)
   async getAlerts() {
     const { data, error } = await supabase
       .from("alerts")

@@ -6,6 +6,8 @@ import { CSVImportExport } from "@/components/CSVImportExport";
 import { useAppData } from "@/hooks/useAppData";
 import { useToast } from "@/hooks/use-toast";
 import { supabaseHelpers } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 
 export default function Personnel() {
   const { refreshPersonnel, loading, personnel } = useAppData();
@@ -114,17 +116,27 @@ P002,Mary,Smith,mary.smith@police.gov,+233234567890,Sergeant,Investigation,2023-
 
   return (
     <div className="p-6 space-y-6">
-      {/* Import/Export Section */}
-      <div className="flex justify-end">
-        <CSVImportExport
-          entityType="personnel"
-          onImportComplete={handleImportPersonnel}
-          onExportRequest={handleExportPersonnel}
-          importTemplate={personnelImportTemplate}
-        />
+      {/* Page Header aligned with Import/Export */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900">Personnel Management</h1>
+          <p className="text-gray-600 mt-1">Manage officers and staff members</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <CSVImportExport
+            entityType="personnel"
+            onImportComplete={handleImportPersonnel}
+            onExportRequest={handleExportPersonnel}
+            importTemplate={personnelImportTemplate}
+          />
+          <Button onClick={() => setShowAddPersonnelModal(true)} className="gap-2 bg-blue-600 hover:bg-blue-700">
+            <Plus className="w-4 h-4" />
+            Add Personnel
+          </Button>
+        </div>
       </div>
 
-      <PersonnelList onAddPersonnel={() => setShowAddPersonnelModal(true)} />
+      <PersonnelList onAddPersonnel={() => setShowAddPersonnelModal(true)} showHeader={false} />
 
       {/* Add Personnel Modal */}
       <AddPersonnelModal

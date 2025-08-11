@@ -1,10 +1,14 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getFirebaseApp } from "@/integrations/firebase/client";
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject, listAll, getMetadata } from "firebase/storage";
+
+const useFirebase = () => (process.env.NEXT_PUBLIC_USE_FIRESTORE || "").toString() === "true";
 
 export interface FileUploadOptions {
   bucket: string;
   folder?: string;
   maxSize?: number; // in bytes
-  allowedTypes?: string[];
+  allowedTypes?: readonly string[];
   generateUniqueName?: boolean;
 }
 
@@ -90,7 +94,7 @@ export const FILE_CONFIGS = {
  */
 export function validateFile(
   file: File,
-  config: (typeof FILE_CONFIGS)[keyof typeof FILE_CONFIGS]
+  config: { readonly maxSize: number; readonly allowedTypes: readonly string[]; readonly extensions: readonly string[] }
 ): { isValid: boolean; error?: string } {
   // Check file size
   if (file.size > config.maxSize) {
@@ -131,7 +135,7 @@ export function generateUniqueFileName(originalName: string): string {
 }
 
 /**
- * Uploads a file to Supabase storage
+ * Uploads a file to storage (Firebase when enabled, otherwise Supabase)
  */
 export async function uploadFile(
   file: File,
@@ -142,9 +146,9 @@ export async function uploadFile(
     if (options.allowedTypes || options.maxSize) {
       const config = {
         maxSize: options.maxSize || 10 * 1024 * 1024,
-        allowedTypes: options.allowedTypes || [],
-        extensions: [],
-      };
+        allowedTypes: (options.allowedTypes as readonly string[]) || [],
+        extensions: [] as readonly string[],
+      } as const;
 
       const validation = validateFile(file, config);
       if (!validation.isValid) {
@@ -164,7 +168,15 @@ export async function uploadFile(
       ? `${options.folder}/${fileName}`
       : fileName;
 
-    // Upload to Supabase storage
+    if (useFirebase()) {
+      const storage = getStorage(getFirebaseApp());
+      const storageRef = ref(storage, `${options.bucket}/${filePath}`);
+      const snapshot = await uploadBytes(storageRef, file, { contentType: file.type });
+      const url = await getDownloadURL(snapshot.ref);
+      return { success: true, url, path: filePath, size: file.size, type: file.type };
+    }
+
+    // Supabase fallback
     const { data, error } = await supabase.storage
       .from(options.bucket)
       .upload(filePath, file, {
@@ -179,7 +191,6 @@ export async function uploadFile(
       };
     }
 
-    // Get public URL
     const { data: urlData } = supabase.storage
       .from(options.bucket)
       .getPublicUrl(filePath);
@@ -200,13 +211,20 @@ export async function uploadFile(
 }
 
 /**
- * Deletes a file from Supabase storage
+ * Deletes a file from storage
  */
 export async function deleteFile(
   bucket: string,
   filePath: string
 ): Promise<FileDeleteResult> {
   try {
+    if (useFirebase()) {
+      const storage = getStorage(getFirebaseApp());
+      const storageRef = ref(storage, `${bucket}/${filePath}`);
+      await deleteObject(storageRef);
+      return { success: true };
+    }
+
     const { error } = await supabase.storage.from(bucket).remove([filePath]);
 
     if (error) {
@@ -234,6 +252,14 @@ export async function getSignedUrl(
   expiresIn: number = 3600
 ): Promise<{ url?: string; error?: string }> {
   try {
+    if (useFirebase()) {
+      // Firebase download URLs are already signed, just return it
+      const storage = getStorage(getFirebaseApp());
+      const storageRef = ref(storage, `${bucket}/${filePath}`);
+      const url = await getDownloadURL(storageRef);
+      return { url };
+    }
+
     const { data, error } = await supabase.storage
       .from(bucket)
       .createSignedUrl(filePath, expiresIn);
@@ -260,6 +286,27 @@ export async function listFiles(
   limit: number = 100
 ) {
   try {
+    if (useFirebase()) {
+      const storage = getStorage(getFirebaseApp());
+      const safeFolder = folder ? folder.replace(/^\/+|\/+$/g, "") : "";
+      const basePath = safeFolder ? `${bucket}/${safeFolder}` : bucket;
+      const dirRef = ref(storage, basePath);
+      const res = await listAll(dirRef);
+      const files = await Promise.all(
+        res.items.slice(0, limit).map(async (itemRef) => {
+          const url = await getDownloadURL(itemRef);
+          const meta = await getMetadata(itemRef).catch(() => undefined);
+          return {
+            name: itemRef.name,
+            created_at: meta?.timeCreated,
+            metadata: { mimetype: meta?.contentType, size: meta?.size },
+            url,
+          } as any;
+        })
+      );
+      return { files, error: null };
+    }
+
     const { data, error } = await supabase.storage.from(bucket).list(folder, {
       limit,
       offset: 0,

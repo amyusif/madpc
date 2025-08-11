@@ -46,9 +46,10 @@ import type { Personnel } from "@/integrations/supabase/client";
 
 interface PersonnelListProps {
   onAddPersonnel: () => void;
+  showHeader?: boolean;
 }
 
-export default function PersonnelList({ onAddPersonnel }: PersonnelListProps) {
+export default function PersonnelList({ onAddPersonnel, showHeader = true }: PersonnelListProps) {
   const { personnel, refreshPersonnel } = useAppData();
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -278,26 +279,28 @@ export default function PersonnelList({ onAddPersonnel }: PersonnelListProps) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-            Personnel Management
-          </h1>
-          <p className="text-gray-600 mt-1">
-            Manage officers and staff members
-          </p>
+      {showHeader && (
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+              Personnel Management
+            </h1>
+            <p className="text-gray-600 mt-1">
+              Manage officers and staff members
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <PersonnelRefreshButton />
+            <Button
+              onClick={onAddPersonnel}
+              className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Add Personnel
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <PersonnelRefreshButton />
-          <Button
-            onClick={onAddPersonnel}
-            className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Add Personnel
-          </Button>
-        </div>
-      </div>
+      )}
 
       {/* Search and Filters */}
       <div className="flex items-center gap-4 flex-wrap">
@@ -475,7 +478,7 @@ export default function PersonnelList({ onAddPersonnel }: PersonnelListProps) {
                       <div className="flex items-center gap-3">
                         <PersonnelPhotoUpload
                           personnelId={person.id}
-                          currentPhotoUrl={person.photo_url}
+                          currentPhotoUrl={person.photo_url ?? undefined}
                           badgeNumber={person.badge_number}
                           fullName={`${person.first_name} ${person.last_name}`}
                           onPhotoUpdate={(photoUrl) => {

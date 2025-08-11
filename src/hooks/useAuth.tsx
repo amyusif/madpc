@@ -1,22 +1,27 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import type { User, Session } from "@supabase/supabase-js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut as fbSignOut, User as FbUser } from "firebase/auth";
+import { getDb, getFirebaseApp } from "@/integrations/firebase/client";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+
+type Role = "district_commander" | "unit_supervisor";
 
 interface Profile {
   id: string;
   full_name: string;
   badge_number?: string;
-  role: "district_commander" | "unit_supervisor";
+  role: Role;
   phone?: string;
-  avatar_url?: string;
-  created_at: string;
-  updated_at: string;
+  avatar_url?: string | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
+interface MinimalUser { id: string; email?: string | null }
+
 interface AuthContextType {
-  user: User | null;
+  user: MinimalUser | null;
   profile: Profile | null;
-  session: Session | null;
+  session: null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -25,192 +30,87 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<MinimalUser | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let mounted = true;
-
-    // Get initial session
-    const getInitialSession = async () => {
-      try {
-        const {
-          data: { session },
-          error,
-        } = await supabase.auth.getSession();
-
-        if (error) {
-          console.error("Error getting session:", error);
-          if (mounted) {
-            setLoading(false);
-          }
-          return;
-        }
-
-        if (mounted) {
-          setSession(session);
-          setUser(session?.user ?? null);
-
-          if (session?.user) {
-            await fetchProfile(session.user.id);
-          } else {
-            setProfile(null);
-          }
-          setLoading(false);
-        }
-      } catch (error) {
-        console.error("Session initialization error:", error);
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    getInitialSession();
-
-    // Listen for auth changes - clean, non-async handler
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!mounted) return;
-
-      console.log("Auth state change:", event, session?.user?.email);
-
-      // Handle auth events synchronously to avoid deadlocks
-      if (event === "SIGNED_IN" && session) {
-        setSession(session);
-        setUser(session.user);
-        setLoading(false);
-        // Fetch profile asynchronously without blocking
-        fetchProfile(session.user.id).catch(console.error);
-      } else if (event === "SIGNED_OUT") {
-        setSession(null);
+    const app = getFirebaseApp();
+    const auth = getAuth(app);
+    const unsub = onAuthStateChanged(auth, async (fbUser) => {
+      if (fbUser) {
+        const u = { id: fbUser.uid, email: fbUser.email };
+        setUser(u);
+        await fetchProfile(fbUser);
+      } else {
         setUser(null);
         setProfile(null);
-        setLoading(false);
-      } else if (event === "TOKEN_REFRESHED" && session) {
-        setSession(session);
-        setUser(session.user);
-        // Don't change loading state for token refresh
-      } else if (event === "INITIAL_SESSION") {
-        // Handle initial session properly
-        if (session) {
-          setSession(session);
-          setUser(session.user);
-          fetchProfile(session.user.id).catch(console.error);
-        }
-        setLoading(false);
       }
+      setLoading(false);
     });
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
+    return () => unsub();
   }, []);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async (fbUser: FbUser) => {
     try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId)
-        .single();
-
-      if (error && error.code !== "PGRST116") {
-        console.error("Profile fetch error:", error);
-        throw error;
+      const db = getDb();
+      const ref = doc(db, "profiles", fbUser.uid);
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        setProfile({ id: fbUser.uid, ...(snap.data() as any) });
+      } else {
+        // Seed minimal profile if missing
+        const seed: Profile = {
+          id: fbUser.uid,
+          full_name: fbUser.email || "User",
+          role: "unit_supervisor",
+          avatar_url: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        await setDoc(ref, seed);
+        setProfile(seed);
       }
-
-      setProfile(data || null);
-    } catch (error) {
-      console.error("Error fetching profile:", error);
+    } catch (e) {
+      console.error("Profile fetch error:", e);
       setProfile(null);
     }
   };
 
   const signIn = async (email: string, password: string) => {
+    setLoading(true);
     try {
-      setLoading(true);
-
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        console.error("Authentication failed:", error.message);
-        setLoading(false); // Only set loading false on error
-        throw error;
-      }
-
-      // The auth state change listener will handle setting the user state and loading to false
-    } catch (error: any) {
+      const auth = getAuth(getFirebaseApp());
+      await signInWithEmailAndPassword(auth, email, password);
+      // onAuthStateChanged will update state
+    } catch (e: any) {
       setLoading(false);
-      throw new Error(error.message || "Failed to sign in");
+      throw new Error(e?.message || "Failed to sign in");
     }
   };
 
   const signOut = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-
-      // Clear session data first
-      setSession(null);
+      const auth = getAuth(getFirebaseApp());
+      await fbSignOut(auth);
       setUser(null);
       setProfile(null);
-
-      // Clear all localStorage and sessionStorage
       if (typeof window !== "undefined") {
-        // Clear auth-related localStorage
-        localStorage.removeItem("madpc-auth-token");
-        localStorage.removeItem("sb-madpc-auth-token");
-
-        // Clear all supabase and auth related items
-        Object.keys(localStorage).forEach((key) => {
-          if (
-            key.includes("supabase") ||
-            key.includes("auth") ||
-            key.includes("madpc")
-          ) {
-            localStorage.removeItem(key);
-          }
-        });
-
-        // Clear sessionStorage to prevent cache persistence
+        localStorage.clear();
         sessionStorage.clear();
-
-        // Clear any cached data in memory
         if ("caches" in window) {
-          caches.keys().then((names) => {
-            names.forEach((name) => {
-              caches.delete(name);
-            });
-          });
+          caches.keys().then((names) => names.forEach((n) => caches.delete(n)));
         }
       }
-
-      // Sign out from Supabase with scope 'local' to prevent server-side cache
-      const { error } = await supabase.auth.signOut({ scope: "local" });
-      if (error) throw error;
-    } catch (error: any) {
-      throw new Error(error.message || "Failed to sign out");
+    } catch (e: any) {
+      throw new Error(e?.message || "Failed to sign out");
     } finally {
       setLoading(false);
     }
   };
 
-  const value: AuthContextType = {
-    user,
-    profile,
-    session,
-    loading,
-    signIn,
-    signOut,
-  };
-
+  const value: AuthContextType = { user, profile, session: null, loading, signIn, signOut };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

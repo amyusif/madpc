@@ -193,37 +193,7 @@ export default function Reports() {
         </div>
       </div>
 
-      {/* Statistics Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Total Personnel"
-          value={stats.totalPersonnel.toString()}
-          subtitle="Active officers"
-          icon={Users}
-          variant="blue"
-        />
-        <StatCard
-          title="Cases Resolved"
-          value={stats.casesResolved.toString()}
-          subtitle="Closed & archived"
-          icon={CheckCircle}
-          variant="green"
-        />
-        <StatCard
-          title="Pending Duties"
-          value={stats.pendingDuties.toString()}
-          subtitle="Awaiting assignment"
-          icon={Clock}
-          variant="orange"
-        />
-        <StatCard
-          title="Active Alerts"
-          value={stats.activeAlerts.toString()}
-          subtitle="Urgent attention"
-          icon={AlertTriangle}
-          variant="red"
-        />
-      </div>
+
 
       {/* Report Filters */}
       <Card>

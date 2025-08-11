@@ -199,7 +199,7 @@ export function UserProfilePhotoUpload({
     <div className="flex items-center space-x-4">
       <div className="relative group">
         <Avatar className={sizeClasses[size]}>
-          <AvatarImage src={currentPhotoUrl} alt={getDisplayName()} />
+          <AvatarImage src={currentPhotoUrl ?? undefined} alt={getDisplayName()} />
           <AvatarFallback className="text-lg">{getInitials()}</AvatarFallback>
         </Avatar>
         {showChangeButton && (
@@ -228,7 +228,7 @@ export function UserProfilePhotoUpload({
                 {/* Current Photo */}
                 <div className="flex flex-col items-center space-y-4">
                   <Avatar className="w-24 h-24">
-                    <AvatarImage src={currentPhotoUrl} alt={getDisplayName()} />
+                    <AvatarImage src={currentPhotoUrl ?? undefined} alt={getDisplayName()} />
                     <AvatarFallback className="text-lg">
                       {getInitials()}
                     </AvatarFallback>

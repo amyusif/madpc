@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -10,15 +10,34 @@ import {
   FileCheck,
   Search,
   Plus,
-  Clock,
-  User,
 } from "lucide-react";
+import SMSTestButton from "@/components/SMSTestButton";
 import SendMessageModal from "@/components/modals/SendMessageAlertModal";
-import { useAppData } from "@/hooks/useAppData";
+import MessageDetailsModal from "@/components/modals/MessageDetailsModal";
 
 export default function Communication() {
   const [showSendMessageModal, setShowSendMessageModal] = useState(false);
-  const { personnel } = useAppData();
+  const [messages, setMessages] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/messages");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to load messages");
+      setMessages(data.messages || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
 
   return (
     <div className="p-6 space-y-6">
@@ -33,6 +52,7 @@ export default function Communication() {
           </p>
         </div>
         <div className="flex gap-2">
+          <SMSTestButton />
           <Button
             className="gap-2 bg-blue-600 hover:bg-blue-700"
             onClick={() => setShowSendMessageModal(true)}
@@ -72,23 +92,42 @@ export default function Communication() {
         </TabsList>
 
         <TabsContent value="messages" className="space-y-4">
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-              <MessageSquare className="w-16 h-16 text-muted-foreground/50 mb-6" />
-              <h3 className="text-lg font-semibold mb-2">No Messages Found</h3>
-              <p className="text-muted-foreground mb-6 max-w-md">
-                Start communicating with your team. Send messages to individual
-                personnel or groups.
-              </p>
-              <Button
-                className="gap-2"
-                onClick={() => setShowSendMessageModal(true)}
-              >
-                <Plus className="w-4 h-4" />
-                Send Message
-              </Button>
-            </CardContent>
-          </Card>
+          {loading ? (
+            <div className="flex items-center justify-center py-16 text-muted-foreground">Loading messages...</div>
+          ) : messages.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+                <MessageSquare className="w-16 h-16 text-muted-foreground/50 mb-6" />
+                <h3 className="text-lg font-semibold mb-2">No Messages Found</h3>
+                <p className="text-muted-foreground mb-6 max-w-md">
+                  Start communicating with your team. Send messages to individual
+                  personnel or groups.
+                </p>
+                <Button className="gap-2" onClick={() => setShowSendMessageModal(true)}>
+                  <Plus className="w-4 h-4" />
+                  Send Message
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {messages.map((m) => (
+                <Card key={m.id} className="cursor-pointer" onClick={() => setSelectedMessageId(m.id)}>
+                  <CardContent className="p-4">
+                    <div className="text-sm text-muted-foreground">{new Date(m.created_at).toLocaleString()}</div>
+                    <div className="font-medium line-clamp-1">{m.subject}</div>
+                    <div className="text-sm text-muted-foreground line-clamp-2 whitespace-pre-wrap">{m.body}</div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          <MessageDetailsModal
+            messageId={selectedMessageId}
+            open={!!selectedMessageId}
+            onOpenChange={(open) => !open && setSelectedMessageId(null)}
+          />
         </TabsContent>
 
         <TabsContent value="alerts" className="space-y-4">

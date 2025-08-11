@@ -99,7 +99,7 @@ export function Layout({ children }: LayoutProps) {
                   className="relative h-8 w-8 rounded-full"
                 >
                   <UserProfilePhotoUpload
-                    currentPhotoUrl={profile?.avatar_url}
+                    currentPhotoUrl={profile?.avatar_url ?? undefined}
                     size="sm"
                     editable={false}
                     showChangeButton={false}
