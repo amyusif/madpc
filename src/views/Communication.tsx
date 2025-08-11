@@ -11,7 +11,7 @@ import {
   Search,
   Plus,
 } from "lucide-react";
-import SMSTestButton from "@/components/SMSTestButton";
+
 import SendMessageModal from "@/components/modals/SendMessageAlertModal";
 import MessageDetailsModal from "@/components/modals/MessageDetailsModal";
 
@@ -52,7 +52,6 @@ export default function Communication() {
           </p>
         </div>
         <div className="flex gap-2">
-          <SMSTestButton />
           <Button
             className="gap-2 bg-blue-600 hover:bg-blue-700"
             onClick={() => setShowSendMessageModal(true)}

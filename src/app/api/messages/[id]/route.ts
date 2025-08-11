@@ -2,15 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 
 const useFirestore = () => (process.env.NEXT_PUBLIC_USE_FIRESTORE || "").toString() === "true";
 
-export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const resolvedParams = await params;
     if (useFirestore()) {
       const { getDb } = await import("@/integrations/firebase/client");
       const { doc, getDoc, collection, query, where, getDocs } = await import("firebase/firestore");
       const db = getDb();
 
       // Get message
-      const msgDoc = await getDoc(doc(db, "messages", params.id));
+      const msgDoc = await getDoc(doc(db, "messages", resolvedParams.id));
       if (!msgDoc.exists()) {
         return NextResponse.json({ error: "Message not found" }, { status: 404 });
       }
@@ -18,7 +19,7 @@ export async function GET(_: NextRequest, { params }: { params: { id: string } }
       // Get recipients
       const recipientsQuery = query(
         collection(db, "message_recipients"),
-        where("message_id", "==", params.id)
+        where("message_id", "==", resolvedParams.id)
       );
       const recipientsSnap = await getDocs(recipientsQuery);
       const recipients = recipientsSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
@@ -31,7 +32,7 @@ export async function GET(_: NextRequest, { params }: { params: { id: string } }
       const { data, error } = await supabase
         .from("messages")
         .select("*, recipients:message_recipients(*)")
-        .eq("id", params.id)
+        .eq("id", resolvedParams.id)
         .single();
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
       return NextResponse.json({ message: data });
