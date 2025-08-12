@@ -42,3 +42,43 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
   }
 }
 
+export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const resolvedParams = await params;
+    if (useFirestore()) {
+      const { getDb } = await import("@/integrations/firebase/client");
+      const { doc, deleteDoc, collection, query, where, getDocs } = await import("firebase/firestore");
+      const db = getDb();
+
+      // Delete message recipients first
+      const recipientsQuery = query(
+        collection(db, "message_recipients"),
+        where("message_id", "==", resolvedParams.id)
+      );
+      const recipientsSnap = await getDocs(recipientsQuery);
+      const deletePromises = recipientsSnap.docs.map((d) => deleteDoc(d.ref));
+      await Promise.all(deletePromises);
+
+      // Delete the message
+      await deleteDoc(doc(db, "messages", resolvedParams.id));
+
+      return NextResponse.json({ success: true });
+    } else {
+      const { getServerSupabase } = await import("@/integrations/supabase/server");
+      const supabase = getServerSupabase();
+
+      // Delete message recipients first (cascade should handle this, but being explicit)
+      await supabase.from("message_recipients").delete().eq("message_id", resolvedParams.id);
+
+      // Delete the message
+      const { error } = await supabase.from("messages").delete().eq("id", resolvedParams.id);
+      if (error) throw new Error(error.message);
+
+      return NextResponse.json({ success: true });
+    }
+  } catch (e: any) {
+    console.error("Delete message error:", e);
+    return NextResponse.json({ error: e?.message || "Failed to delete message" }, { status: 500 });
+  }
+}
+

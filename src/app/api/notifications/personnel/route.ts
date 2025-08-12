@@ -52,7 +52,7 @@ async function logMessage(subject: string, message: string, recipients: any[]) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { personnelIds, subject, message, channels = ["email"] } = await req.json();
+    const { personnelIds, subject, message, channels = ["email"], scheduleAt } = await req.json();
 
     if (!Array.isArray(personnelIds) || personnelIds.length === 0) {
       return NextResponse.json({ error: "personnelIds is required" }, { status: 400 });
@@ -107,10 +107,11 @@ export async function POST(req: NextRequest) {
       smsResults = await Promise.all(
         recipients.filter(r => r.phone).map(async (r) => {
           try {
-            await sendSMS(r.phone, `${subject}\n\n${message}`);
+            await sendSMS(r.phone, `${subject}\n\n${message}`.trim(), scheduleAt);
             await updateRecipientStatus(messageId, r.id, "sms", "sent");
             return true;
           } catch (err: any) {
+            console.error("[SMS] Send failed for", r.phone, err?.message || err);
             await updateRecipientStatus(messageId, r.id, "sms", "failed", err?.message);
             return false;
           }
@@ -152,11 +153,50 @@ async function updateRecipientStatus(messageId: string | null, personnelId: stri
   }
 }
 
-async function sendSMS(phone: string, message: string): Promise<void> {
-  // Placeholder for SMS implementation
-  // You can integrate with Twilio, AWS SNS, or other SMS providers
-  const smsProvider = process.env.SMS_PROVIDER || "none";
+async function sendSMS(phone: string, message: string, scheduleAt?: string): Promise<void> {
+  const smsProvider = (process.env.SMS_PROVIDER || "none").toLowerCase();
 
+  // Arkesel SMS provider (recommended for Ghana)
+  if (smsProvider === "arkesel") {
+    const apiKey = process.env.ARKESEL_API_KEY;
+    const senderId = process.env.ARKESEL_SENDER_ID;
+    if (!apiKey || !senderId) throw new Error("Arkesel SMS not configured: set ARKESEL_API_KEY and ARKESEL_SENDER_ID");
+
+    const { formatPhoneForSMS } = await import("@/utils/phoneUtils");
+    const normalized = formatPhoneForSMS(phone); // +23324...
+    const recipient = normalized.replace(/\D/g, ""); // 23324...
+
+    // Use Arkesel simple GET API for single or scheduled SMS
+    const base = "https://sms.arkesel.com/sms/api";
+    const params = new URLSearchParams({
+      action: "send-sms",
+      api_key: apiKey,
+      to: recipient,
+      from: senderId,
+      sms: message,
+    });
+    if (scheduleAt) params.set("schedule", scheduleAt);
+
+    const url = `${base}?${params.toString()}`;
+
+    console.log("[SMS] Provider=arkesel, url=", url.replace(apiKey, "***"));
+
+    const res = await fetch(url, { method: "GET" });
+    const text = await res.text();
+    console.log("[SMS] Arkesel response status=", res.status);
+    console.log("[SMS] Arkesel response body=", text);
+
+    if (!res.ok) throw new Error(`Arkesel HTTP ${res.status}: ${text}`);
+
+    // The legacy API sometimes returns plain text like "1000|Message Sent" or JSON
+    const lower = text.toLowerCase();
+    const ok = lower.includes("success") || lower.includes("sent") || lower.startsWith("1000");
+    if (!ok) throw new Error(`Arkesel send failed: ${text}`);
+
+    return;
+  }
+
+  // Legacy Twilio branch (kept for compatibility)
   if (smsProvider === "twilio") {
     const twilio = require("twilio");
     const client = twilio(
@@ -164,23 +204,20 @@ async function sendSMS(phone: string, message: string): Promise<void> {
       process.env.TWILIO_AUTH_TOKEN
     );
 
-    // Format phone number properly for Ghana
     const { formatPhoneForSMS } = await import("@/utils/phoneUtils");
     const formattedPhone = formatPhoneForSMS(phone);
+    console.log("[SMS] Provider=twilio, to=", formattedPhone);
 
-    await client.messages.create({
+    const result = await client.messages.create({
       body: message,
       from: process.env.TWILIO_PHONE_NUMBER,
       to: formattedPhone,
     });
-  } else if (smsProvider === "aws") {
-    // AWS SNS implementation would go here
-    throw new Error("SMS not configured - set SMS_PROVIDER and credentials");
-  } else {
-    // For demo purposes, just log
-    console.log(`📱 SMS would be sent to ${phone}: ${message}`);
-    // Simulate success for demo
-    return Promise.resolve();
+    console.log("[SMS] Twilio message sid=", result?.sid);
+    return;
   }
+
+  // Default: simulate/send nothing
+  console.log(`📱 SMS would be sent to ${phone}: ${message.slice(0, 120)}`);
 }
 

@@ -75,5 +75,19 @@ export const firestoreHelpers = {
     const ref = await addDoc(collection(db, DUTIES), cleanData);
     return { id: ref.id, ...(d as any), created_at: new Date().toISOString(), updated_at: new Date().toISOString() } as any;
   },
+  async updateDuty(id: string, d: Partial<Omit<Duty, "id" | "created_at">>): Promise<Duty> {
+    const db = getDb();
+    const cleanData = Object.fromEntries(
+      Object.entries({ ...d, updated_at: new Date().toISOString() })
+        .filter(([_, value]) => value !== undefined)
+    );
+    await updateDoc(doc(db, DUTIES, id), cleanData);
+    return { id, ...(d as any), updated_at: new Date().toISOString() } as any;
+  },
+  async deleteDuty(id: string) {
+    const db = getDb();
+    await deleteDoc(doc(db, DUTIES, id));
+    return { success: true };
+  },
 };
 

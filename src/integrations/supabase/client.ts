@@ -324,6 +324,42 @@ export const supabaseHelpers = {
     return data as Duty;
   },
 
+  async updateDuty(
+    dutyId: string,
+    duty: Partial<Omit<Duty, "id" | "created_at">>
+  ) {
+    if (useFirestore()) {
+      const { firestoreHelpers } = await import("@/integrations/firebase/helpers");
+      return firestoreHelpers.updateDuty(dutyId, duty);
+    }
+    const { data, error } = await supabase
+      .from("duties")
+      .update({
+        ...duty,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", dutyId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as Duty;
+  },
+
+  async deleteDuty(dutyId: string) {
+    if (useFirestore()) {
+      const { firestoreHelpers } = await import("@/integrations/firebase/helpers");
+      return firestoreHelpers.deleteDuty(dutyId);
+    }
+    const { error } = await supabase
+      .from("duties")
+      .delete()
+      .eq("id", dutyId);
+
+    if (error) throw error;
+    return { success: true };
+  },
+
   // Alerts operations (left on Supabase for now)
   async getAlerts() {
     const { data, error } = await supabase

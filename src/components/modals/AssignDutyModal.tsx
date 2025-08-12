@@ -27,12 +27,14 @@ interface AssignDutyModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onDutyAssigned?: () => void;
+  initialPersonnelId?: string;
 }
 
 export function AssignDutyModal({
   open,
   onOpenChange,
   onDutyAssigned,
+  initialPersonnelId,
 }: AssignDutyModalProps) {
   const { personnel, refreshDuties } = useAppData();
   const { toast } = useToast();
@@ -51,7 +53,7 @@ export function AssignDutyModal({
     setFormData({
       dutyTitle: "",
       description: "",
-      assignTo: "",
+      assignTo: initialPersonnelId || "",
       location: "",
       startTime: "",
       endTime: "",

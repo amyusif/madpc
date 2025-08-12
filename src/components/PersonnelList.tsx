@@ -36,6 +36,9 @@ import { useToast } from "@/hooks/use-toast";
 import { supabaseHelpers } from "@/integrations/supabase/client";
 import ViewPersonnelModal from "@/components/modals/ViewPersonnelModal";
 import EditPersonnelModal from "@/components/modals/EditPersonnelModal";
+import UpdatePersonnelStatusModal from "@/components/modals/UpdatePersonnelStatusModal";
+import { AssignDutyModal } from "@/components/modals/AssignDutyModal";
+import ComposeMessageModal from "@/components/modals/ComposeMessageModal";
 
 import PersonnelFilters, {
   PersonnelFilters as FilterType,
@@ -62,6 +65,9 @@ export default function PersonnelList({ onAddPersonnel, showHeader = true }: Per
   const [selectedPersonnel, setSelectedPersonnel] = useState<Personnel | null>(
     null
   );
+const [statusModalOpen, setStatusModalOpen] = useState(false);
+const [assignDutyOpen, setAssignDutyOpen] = useState(false);
+const [composeOpen, setComposeOpen] = useState(false);
   const [bulkSelectedPersonnel, setBulkSelectedPersonnel] = useState<
     Personnel[]
   >([]);
@@ -235,6 +241,23 @@ export default function PersonnelList({ onAddPersonnel, showHeader = true }: Per
     setSelectedPersonnel(person);
     setViewModalOpen(true);
   };
+
+  // Additional actions
+  const handleUpdateStatus = (person: Personnel) => {
+    setSelectedPersonnel(person);
+    setStatusModalOpen(true);
+  };
+
+  const handleAssignDuty = (person: Personnel) => {
+    setSelectedPersonnel(person);
+    setAssignDutyOpen(true);
+  };
+
+  const handleSendMessage = (person: Personnel) => {
+    setSelectedPersonnel(person);
+    setComposeOpen(true);
+  };
+
 
   // Handle personnel updated
   const handlePersonnelUpdated = async () => {
@@ -541,24 +564,27 @@ export default function PersonnelList({ onAddPersonnel, showHeader = true }: Per
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48">
-                          <DropdownMenuItem
-                            onClick={() => handleView(person)}
-                            className="cursor-pointer"
-                          >
+                          <DropdownMenuItem onClick={() => handleUpdateStatus(person)} className="cursor-pointer">
+                            <UserCheck className="mr-2 h-4 w-4" />
+                            Update Status
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleAssignDuty(person)} className="cursor-pointer">
+                            <UserX className="mr-2 h-4 w-4" />
+                            Assign Duty
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleSendMessage(person)} className="cursor-pointer">
+                            <Edit className="mr-2 h-4 w-4" />
+                            Send Message
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleView(person)} className="cursor-pointer">
                             <Eye className="mr-2 h-4 w-4" />
                             View Details
                           </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleEdit(person)}
-                            className="cursor-pointer"
-                          >
+                          <DropdownMenuItem onClick={() => handleEdit(person)} className="cursor-pointer">
                             <Edit className="mr-2 h-4 w-4" />
                             Edit
                           </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleDelete(person)}
-                            className="cursor-pointer text-red-600 focus:text-red-600"
-                          >
+                          <DropdownMenuItem onClick={() => handleDelete(person)} className="cursor-pointer text-red-600 focus:text-red-600">
                             <Trash2 className="mr-2 h-4 w-4" />
                             Delete
                           </DropdownMenuItem>
@@ -691,6 +717,29 @@ export default function PersonnelList({ onAddPersonnel, showHeader = true }: Per
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Update Status Modal */}
+      <UpdatePersonnelStatusModal
+        open={statusModalOpen}
+        onOpenChange={setStatusModalOpen}
+        personnel={selectedPersonnel}
+        onUpdated={refreshPersonnel}
+      />
+
+      {/* Assign Duty Modal */}
+      <AssignDutyModal
+        open={assignDutyOpen}
+        onOpenChange={setAssignDutyOpen}
+        onDutyAssigned={refreshPersonnel}
+        initialPersonnelId={selectedPersonnel?.id}
+      />
+
+      {/* Compose Message Modal */}
+      <ComposeMessageModal
+        open={composeOpen}
+        onOpenChange={setComposeOpen}
+        selectedIds={selectedPersonnel ? [selectedPersonnel.id] : []}
+      />
 
       {/* View Personnel Modal */}
       <ViewPersonnelModal

@@ -66,13 +66,12 @@ export default function Reports() {
   // Calculate stats from app data with error handling
   useEffect(() => {
     try {
-      const totalPersonnel =
-        personnel?.filter((p) => p.status === "active")?.length || 0;
+      const totalPersonnel = personnel?.length || 0;
       const casesResolved =
         cases?.filter((c) => c.status === "closed" || c.status === "archived")
           ?.length || 0;
       const pendingDuties =
-        duties?.filter((d) => d.status === "assigned")?.length || 0;
+        duties?.filter((d) => d.status !== "completed" && d.status !== "cancelled")?.length || 0;
 
       setStats({
         totalPersonnel,

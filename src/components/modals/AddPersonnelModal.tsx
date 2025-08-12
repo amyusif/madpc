@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Select,
   SelectContent,
@@ -19,7 +20,8 @@ import { useToast } from "@/hooks/use-toast";
 import { supabaseHelpers } from "@/integrations/supabase/client";
 import { useAppData } from "@/hooks/useAppData";
 import { useAutoRefresh } from "@/hooks/useRefresh";
-import { Loader2, UserPlus } from "lucide-react";
+import { UploadThingUpload } from "@/components/ui/uploadthing-upload";
+import { Loader2, UserPlus, Camera, X } from "lucide-react";
 
 interface AddPersonnelModalProps {
   open: boolean;
@@ -51,7 +53,37 @@ export default function AddPersonnelModal({
     noChildren: false,
   });
 
+  // Image upload state
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [imageUploading, setImageUploading] = useState(false);
+
   const { refreshPersonnel } = useAppData();
+
+  // Handle image upload completion
+  const handleImageUpload = useCallback((files: { url: string; name: string; size: number }[]) => {
+    if (files.length > 0) {
+      setSelectedImage(files[0].url);
+      toast({
+        title: "✅ Image Uploaded",
+        description: "Personnel photo uploaded successfully",
+      });
+    }
+  }, [toast]);
+
+  // Handle image upload error
+  const handleImageError = useCallback((error: string) => {
+    toast({
+      title: "❌ Upload Failed",
+      description: error,
+      variant: "destructive",
+    });
+  }, [toast]);
+
+  // Remove selected image
+  const removeImage = useCallback(() => {
+    setSelectedImage(null);
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -87,6 +119,8 @@ export default function AddPersonnelModal({
         no_children:
           formData.maritalStatus === "Divorced" ? formData.noChildren : false,
         status: "active" as const,
+        // Store UploadThing image URL in Firebase
+        photo_url: selectedImage || null,
       };
 
       // Insert personnel into Supabase
@@ -102,7 +136,7 @@ export default function AddPersonnelModal({
 
       console.log("Toast notification sent for successful personnel creation");
 
-      // Reset form data
+      // Reset form data and image
       setFormData({
         badgeNumber: "",
         firstName: "",
@@ -118,6 +152,7 @@ export default function AddPersonnelModal({
         childrenCount: "",
         noChildren: false,
       });
+      setSelectedImage(null);
 
       // Close modal and trigger refresh
       onOpenChange(false);
@@ -167,6 +202,58 @@ export default function AddPersonnelModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Personnel Photo Section */}
+          <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
+            <div className="flex items-center gap-3">
+              <Camera className="w-5 h-5 text-blue-600" />
+              <Label className="text-base font-medium">Personnel Photo</Label>
+              <span className="text-sm text-gray-500">(Optional)</span>
+            </div>
+
+            <div className="flex items-start gap-4">
+              {/* Photo Preview */}
+              <div className="flex-shrink-0">
+                <Avatar className="w-20 h-20">
+                  <AvatarImage src={selectedImage || undefined} alt="Personnel photo" />
+                  <AvatarFallback className="text-lg bg-gray-200">
+                    {formData.firstName && formData.lastName
+                      ? `${formData.firstName.charAt(0)}${formData.lastName.charAt(0)}`.toUpperCase()
+                      : <Camera className="w-8 h-8 text-gray-400" />
+                    }
+                  </AvatarFallback>
+                </Avatar>
+                {selectedImage && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={removeImage}
+                    className="mt-2 w-20 h-8 text-xs"
+                  >
+                    <X className="w-3 h-3 mr-1" />
+                    Remove
+                  </Button>
+                )}
+              </div>
+
+              {/* Upload Section */}
+              <div className="flex-1">
+                <UploadThingUpload
+                  endpoint="personnelPhotos"
+                  onUploadComplete={handleImageUpload}
+                  onUploadError={handleImageError}
+                  maxFiles={1}
+                  accept="image/*"
+                  placeholder="Choose personnel photo"
+                  disabled={imageUploading}
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  Images are stored securely via UploadThing CDN. Only the URL is saved in Firebase.
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             {/* Left Column */}
             <div className="space-y-4">

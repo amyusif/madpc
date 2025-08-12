@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS personnel (
   children_count INTEGER,
   no_children BOOLEAN DEFAULT FALSE,
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'suspended', 'retired')),
+  photo_url TEXT, -- UploadThing CDN URL for personnel photos
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

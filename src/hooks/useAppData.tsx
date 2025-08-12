@@ -135,10 +135,13 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Calculate stats from the data
+  // - Total Personnel: count all personnel (not just active)
+  // - Active Cases: open + in_progress
+  // - Pending Duties: everything not completed or cancelled
   const stats = {
-    totalPersonnel: personnel.filter((p) => p.status === "active").length,
-    activeCases: cases.filter((c) => c.status === "open").length,
-    pendingDuties: duties.filter((d) => d.status === "scheduled").length,
+    totalPersonnel: personnel.length,
+    activeCases: cases.filter((c) => c.status === "open" || c.status === "in_progress").length,
+    pendingDuties: duties.filter((d) => d.status !== "completed" && d.status !== "cancelled").length,
     activeAlerts: 0, // This would come from alerts collection when implemented
   };
 
