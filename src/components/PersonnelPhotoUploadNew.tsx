@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { UploadThingUpload } from "@/components/ui/uploadthing-upload";
+import { FileUpload } from "@/components/ui/file-upload";
+import { FILE_CONFIGS, STORAGE_BUCKETS, type FileUploadResult } from "@/utils/fileStorage";
 import {
   Dialog,
   DialogContent,
@@ -14,7 +15,6 @@ import {
 import { Camera, Upload, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabaseHelpers } from "@/integrations/supabase/client";
-import { STORAGE_ENDPOINTS, FILE_CONFIGS } from "@/utils/fileStorageNew";
 
 interface PersonnelPhotoUploadProps {
   personnelId: string;
@@ -37,6 +37,7 @@ export function PersonnelPhotoUploadNew({
 }: PersonnelPhotoUploadProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(currentPhotoUrl || null);
   const { toast } = useToast();
 
   const sizeClasses = {
@@ -54,17 +55,36 @@ export function PersonnelPhotoUploadNew({
     return `${firstName} ${lastName}`;
   };
 
-  const handleUploadComplete = async (files: { url: string; name: string; size: number }[]) => {
-    if (files.length === 0) return;
+  const handleUploadComplete = async (result: FileUploadResult) => {
+    if (!result.success || !result.url) return;
 
-    const uploadedFile = files[0];
+    const uploadedFile = { url: result.url } as const;
     setIsUploading(true);
 
     try {
+      // Delete old photo if it exists
+      if (photoUrl && photoUrl.includes('firebasestorage.googleapis.com')) {
+        try {
+          // Extract file path from Firebase Storage URL
+          const urlParts = photoUrl.split('/o/')[1];
+          const oldPath = decodeURIComponent(urlParts.split('?')[0]);
+          await fetch('/api/upload/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filePath: oldPath }),
+          });
+        } catch (error) {
+          console.warn('Failed to delete old photo:', error);
+        }
+      }
+
       // Update personnel record with new photo URL
       await supabaseHelpers.updatePersonnel(personnelId, {
         photo_url: uploadedFile.url,
       });
+
+      setPhotoUrl(uploadedFile.url);
+      onPhotoUpdate?.(uploadedFile.url);
 
       toast({
         title: "✅ Photo Updated",
@@ -72,7 +92,6 @@ export function PersonnelPhotoUploadNew({
         duration: 3000,
       });
 
-      onPhotoUpdate?.(uploadedFile.url);
       setIsDialogOpen(false);
     } catch (error: any) {
       console.error("Photo update error:", error);
@@ -97,10 +116,29 @@ export function PersonnelPhotoUploadNew({
   const handleRemovePhoto = async () => {
     setIsUploading(true);
     try {
+      // Delete photo from Google Cloud Storage if it exists
+      if (photoUrl && photoUrl.includes('firebasestorage.googleapis.com')) {
+        try {
+          // Extract file path from Firebase Storage URL
+          const urlParts = photoUrl.split('/o/')[1];
+          const filePath = decodeURIComponent(urlParts.split('?')[0]);
+          await fetch('/api/upload/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filePath }),
+          });
+        } catch (error) {
+          console.warn('Failed to delete photo from storage:', error);
+        }
+      }
+
       // Update personnel record to remove photo URL
       await supabaseHelpers.updatePersonnel(personnelId, {
         photo_url: null,
       });
+
+      setPhotoUrl(null);
+      onPhotoUpdate?.(null);
 
       toast({
         title: "✅ Photo Removed",
@@ -108,7 +146,6 @@ export function PersonnelPhotoUploadNew({
         duration: 3000,
       });
 
-      onPhotoUpdate?.(null);
       setIsDialogOpen(false);
     } catch (error) {
       console.error("Photo removal error:", error);
@@ -125,7 +162,7 @@ export function PersonnelPhotoUploadNew({
   if (!editable) {
     return (
       <Avatar className={sizeClasses[size]}>
-        <AvatarImage src={currentPhotoUrl || undefined} alt={getDisplayName()} />
+        <AvatarImage src={photoUrl || undefined} alt={getDisplayName()} />
         <AvatarFallback>{getInitials()}</AvatarFallback>
       </Avatar>
     );
@@ -134,7 +171,7 @@ export function PersonnelPhotoUploadNew({
   return (
     <div className="flex items-center gap-3">
       <Avatar className={sizeClasses[size]}>
-        <AvatarImage src={currentPhotoUrl || undefined} alt={getDisplayName()} />
+        <AvatarImage src={photoUrl || undefined} alt={getDisplayName()} />
         <AvatarFallback>{getInitials()}</AvatarFallback>
       </Avatar>
 
@@ -142,22 +179,22 @@ export function PersonnelPhotoUploadNew({
         <DialogTrigger asChild>
           <Button variant="outline" size="sm" className="gap-2">
             <Camera className="w-4 h-4" />
-            {currentPhotoUrl ? "Change Photo" : "Add Photo"}
+            {photoUrl ? "Change Photo" : "Add Photo"}
           </Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {currentPhotoUrl ? "Update Photo" : "Add Photo"} - {getDisplayName()}
+              {photoUrl ? "Update Photo" : "Add Photo"} - {getDisplayName()}
             </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4">
             {/* Current Photo Preview */}
-            {currentPhotoUrl && (
+            {photoUrl && (
               <div className="flex flex-col items-center gap-3 p-4 border rounded-lg bg-gray-50">
                 <Avatar className="h-20 w-20">
-                  <AvatarImage src={currentPhotoUrl} alt={getDisplayName()} />
+                  <AvatarImage src={photoUrl} alt={getDisplayName()} />
                   <AvatarFallback>{getInitials()}</AvatarFallback>
                 </Avatar>
                 <p className="text-sm text-gray-600">Current Photo</p>
@@ -167,14 +204,19 @@ export function PersonnelPhotoUploadNew({
             {/* Upload New Photo */}
             <div className="space-y-3">
               <h4 className="text-sm font-medium">
-                {currentPhotoUrl ? "Upload New Photo" : "Upload Photo"}
+                {photoUrl ? "Upload New Photo" : "Upload Photo"}
               </h4>
               
-              <UploadThingUpload
-                endpoint={STORAGE_ENDPOINTS.PERSONNEL_PHOTOS}
+              <FileUpload
+                options={{
+                  bucket: STORAGE_BUCKETS.PERSONNEL_PHOTOS,
+                  folder: `personnel/${personnelId}`,
+                  generateUniqueName: true,
+                }}
+                config={FILE_CONFIGS.IMAGES}
                 onUploadComplete={handleUploadComplete}
-                onUploadError={handleUploadError}
-                maxFiles={1}
+                onError={handleUploadError}
+                multiple={false}
                 accept="image/*"
                 placeholder="Choose photo or drag and drop"
                 disabled={isUploading}
@@ -182,7 +224,7 @@ export function PersonnelPhotoUploadNew({
             </div>
 
             {/* Remove Photo Option */}
-            {currentPhotoUrl && (
+            {photoUrl && (
               <div className="pt-4 border-t">
                 <Button
                   variant="outline"

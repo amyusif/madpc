@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { FileUpload } from "@/components/ui/file-upload";
+import { FILE_CONFIGS, STORAGE_BUCKETS, type FileUploadResult } from "@/utils/fileStorage";
 import {
   Dialog,
   DialogContent,
@@ -14,14 +15,7 @@ import {
 import { Camera, Upload, Trash2, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import {
-  STORAGE_BUCKETS,
-  FILE_CONFIGS,
-  deleteFile,
-  type FileUploadResult,
-} from "@/utils/fileStorage";
 import { supabase } from "@/integrations/supabase/client";
-import { checkBucketExists, createStorageBuckets } from "@/utils/setupBuckets";
 
 interface UserProfilePhotoUploadProps {
   currentPhotoUrl?: string;
@@ -40,6 +34,7 @@ export function UserProfilePhotoUpload({
 }: UserProfilePhotoUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(currentPhotoUrl || null);
   const { toast } = useToast();
   const { user, profile } = useAuth();
 
@@ -70,39 +65,34 @@ export function UserProfilePhotoUpload({
   };
 
   const handleUploadComplete = async (result: FileUploadResult) => {
-    if (!result.success || !result.url) {
-      toast({
-        title: "Upload Failed",
-        description: result.error || "Failed to upload photo",
-        variant: "destructive",
-      });
-      return;
-    }
+    if (!result.success || !result.url) return;
+
+    const uploadedFile = { url: result.url } as const;
 
     setIsUploading(true);
 
-    // Check if bucket exists, create if needed
     try {
-      const bucketExists = await checkBucketExists(
-        STORAGE_BUCKETS.USER_PROFILES
-      );
-      if (!bucketExists) {
-        toast({
-          title: "Setting up storage...",
-          description: "Creating storage buckets, please wait",
-        });
-        await createStorageBuckets();
+      // Delete old photo if it exists
+      if (photoUrl && photoUrl.includes('firebasestorage.googleapis.com')) {
+        try {
+          // Extract file path from Firebase Storage URL
+          const urlParts = photoUrl.split('/o/')[1];
+          const oldPath = decodeURIComponent(urlParts.split('?')[0]);
+          await fetch('/api/upload/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filePath: oldPath }),
+          });
+        } catch (error) {
+          console.warn('Failed to delete old photo:', error);
+        }
       }
-    } catch (error) {
-      console.error("Bucket setup error:", error);
-    }
 
-    try {
       // Update user profile with new photo URL
       const { error } = await supabase
         .from("profiles")
         .update({
-          avatar_url: result.url,
+          avatar_url: uploadedFile.url,
           updated_at: new Date().toISOString(),
         })
         .eq("id", user?.id);
@@ -117,7 +107,8 @@ export function UserProfilePhotoUpload({
         duration: 3000,
       });
 
-      onPhotoUpdate?.(result.url);
+      setPhotoUrl(uploadedFile.url);
+      onPhotoUpdate?.(uploadedFile.url);
       setIsDialogOpen(false);
     } catch (error) {
       console.error("Profile update error:", error);
@@ -132,18 +123,26 @@ export function UserProfilePhotoUpload({
   };
 
   const handleRemovePhoto = async () => {
-    if (!currentPhotoUrl || !user?.id) return;
+    if (!photoUrl || !user?.id) return;
 
     setIsUploading(true);
 
     try {
-      // Extract file path from URL
-      const url = new URL(currentPhotoUrl);
-      const pathParts = url.pathname.split("/");
-      const filePath = pathParts.slice(-2).join("/"); // Get folder/filename
-
-      // Delete from storage
-      await deleteFile(STORAGE_BUCKETS.USER_PROFILES, filePath);
+      // Delete photo from Google Cloud Storage if it exists
+      if (photoUrl.includes('firebasestorage.googleapis.com')) {
+        try {
+          // Extract file path from Firebase Storage URL
+          const urlParts = photoUrl.split('/o/')[1];
+          const filePath = decodeURIComponent(urlParts.split('?')[0]);
+          await fetch('/api/upload/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filePath }),
+          });
+        } catch (error) {
+          console.warn('Failed to delete photo from storage:', error);
+        }
+      }
 
       // Update user profile
       const { error } = await supabase
@@ -158,13 +157,14 @@ export function UserProfilePhotoUpload({
         throw error;
       }
 
+      setPhotoUrl(null);
+      onPhotoUpdate?.(null);
+
       toast({
         title: "✅ Photo Removed",
         description: "Your profile photo has been removed successfully",
         duration: 3000,
       });
-
-      onPhotoUpdate?.(null);
       setIsDialogOpen(false);
     } catch (error) {
       console.error("Photo removal error:", error);
@@ -178,18 +178,12 @@ export function UserProfilePhotoUpload({
     }
   };
 
-  const uploadOptions = {
-    bucket: STORAGE_BUCKETS.USER_PROFILES,
-    folder: `user_${user?.id}`,
-    generateUniqueName: true,
-    maxSize: FILE_CONFIGS.IMAGES.maxSize,
-    allowedTypes: FILE_CONFIGS.IMAGES.allowedTypes,
-  };
+
 
   if (!editable) {
     return (
       <Avatar className={sizeClasses[size]}>
-        <AvatarImage src={currentPhotoUrl} alt={getDisplayName()} />
+        <AvatarImage src={photoUrl || undefined} alt={getDisplayName()} />
         <AvatarFallback>{getInitials()}</AvatarFallback>
       </Avatar>
     );
@@ -199,7 +193,7 @@ export function UserProfilePhotoUpload({
     <div className="flex items-center space-x-4">
       <div className="relative group">
         <Avatar className={sizeClasses[size]}>
-          <AvatarImage src={currentPhotoUrl ?? undefined} alt={getDisplayName()} />
+          <AvatarImage src={photoUrl ?? undefined} alt={getDisplayName()} />
           <AvatarFallback className="text-lg">{getInitials()}</AvatarFallback>
         </Avatar>
         {showChangeButton && (
@@ -228,7 +222,7 @@ export function UserProfilePhotoUpload({
                 {/* Current Photo */}
                 <div className="flex flex-col items-center space-y-4">
                   <Avatar className="w-24 h-24">
-                    <AvatarImage src={currentPhotoUrl ?? undefined} alt={getDisplayName()} />
+                    <AvatarImage src={photoUrl ?? undefined} alt={getDisplayName()} />
                     <AvatarFallback className="text-lg">
                       {getInitials()}
                     </AvatarFallback>
@@ -243,7 +237,11 @@ export function UserProfilePhotoUpload({
 
                 {/* File Upload */}
                 <FileUpload
-                  options={uploadOptions}
+                  options={{
+                    bucket: STORAGE_BUCKETS.USER_PROFILES,
+                    folder: `users/${user?.id}`,
+                    generateUniqueName: true,
+                  }}
                   config={FILE_CONFIGS.IMAGES}
                   onUploadComplete={handleUploadComplete}
                   onError={(error) => {
@@ -256,12 +254,12 @@ export function UserProfilePhotoUpload({
                   placeholder="Upload a new profile photo"
                   accept="image/*"
                   disabled={isUploading}
-                  showPreview={false}
+                  multiple={false}
                 />
 
                 {/* Actions */}
                 <div className="flex gap-2">
-                  {currentPhotoUrl && (
+                  {photoUrl && (
                     <Button
                       variant="outline"
                       onClick={handleRemovePhoto}

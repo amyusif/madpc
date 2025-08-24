@@ -63,7 +63,6 @@
     "@tanstack/react-query": "^5.83.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.10",
-    "@uploadthing/react": "^7.3.2",
     "bcryptjs": "^3.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -71,6 +70,7 @@
     "date-fns": "^4.1.0",
     "embla-carousel-react": "^8.6.0",
     "firebase": "^12.1.0",
+    "firebase-admin": "^13.4.0",
     "input-otp": "^1.4.2",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.534.0",
@@ -87,7 +87,6 @@
     "tailwind-merge": "^3.3.1",
     "tailwindcss-animate": "^1.0.7",
     "twilio": "^5.8.0",
-    "uploadthing": "^7.7.3",
     "vaul": "^1.1.2",
     "zod": "^4.0.14"
   },

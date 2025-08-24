@@ -20,7 +20,8 @@ import { useToast } from "@/hooks/use-toast";
 import { supabaseHelpers } from "@/integrations/supabase/client";
 import { useAppData } from "@/hooks/useAppData";
 import { useAutoRefresh } from "@/hooks/useRefresh";
-import { UploadThingUpload } from "@/components/ui/uploadthing-upload";
+import { FileUpload } from "@/components/ui/file-upload";
+import { FILE_CONFIGS, STORAGE_BUCKETS, type FileUploadResult } from "@/utils/fileStorage";
 import { Loader2, UserPlus, Camera, X } from "lucide-react";
 
 interface AddPersonnelModalProps {
@@ -60,9 +61,9 @@ export default function AddPersonnelModal({
   const { refreshPersonnel } = useAppData();
 
   // Handle image upload completion
-  const handleImageUpload = useCallback((files: { url: string; name: string; size: number }[]) => {
-    if (files.length > 0) {
-      setSelectedImage(files[0].url);
+  const handleImageUpload = useCallback((result: FileUploadResult) => {
+    if (result.success && result.url) {
+      setSelectedImage(result.url);
       toast({
         title: "✅ Image Uploaded",
         description: "Personnel photo uploaded successfully",
@@ -238,17 +239,22 @@ export default function AddPersonnelModal({
 
               {/* Upload Section */}
               <div className="flex-1">
-                <UploadThingUpload
-                  endpoint="personnelPhotos"
+                <FileUpload
+                  options={{
+                    bucket: STORAGE_BUCKETS.PERSONNEL_PHOTOS,
+                    folder: `personnel/${formData.badgeNumber || 'unknown'}`,
+                    generateUniqueName: true,
+                  }}
+                  config={FILE_CONFIGS.IMAGES}
                   onUploadComplete={handleImageUpload}
-                  onUploadError={handleImageError}
-                  maxFiles={1}
+                  onError={handleImageError}
+                  multiple={false}
                   accept="image/*"
                   placeholder="Choose personnel photo"
                   disabled={imageUploading}
                 />
                 <p className="text-xs text-gray-500 mt-2">
-                  Images are stored securely via UploadThing CDN. Only the URL is saved in Firebase.
+                  Images are stored securely via Google Cloud Storage. Only the URL is saved in Firebase.
                 </p>
               </div>
             </div>
