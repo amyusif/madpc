@@ -19,7 +19,7 @@ import {
   deleteFile,
   type FileUploadResult,
 } from "@/utils/fileStorage";
-import { supabaseHelpers } from "@/integrations/supabase/client";
+import { db } from "@/integrations/database";
 
 interface PersonnelPhotoUploadProps {
   personnelId: string;
@@ -73,7 +73,7 @@ export function PersonnelPhotoUpload({
 
     try {
       // Update personnel record with new photo URL
-      await supabaseHelpers.updatePersonnel(personnelId, {
+      await db.updatePersonnel(personnelId, {
         photo_url: result.url,
       });
 
@@ -100,28 +100,26 @@ export function PersonnelPhotoUpload({
     if (!currentPhotoUrl) return;
 
     setIsUploading(true);
-
     try {
-      // Extract file path from URL
-      const url = new URL(currentPhotoUrl);
-      const pathParts = url.pathname.split("/");
-      const filePath = pathParts.slice(-2).join("/"); // Get folder/filename
-
-      // Delete from storage
-      await deleteFile(STORAGE_BUCKETS.PERSONNEL_PHOTOS, filePath);
-
-      // Update personnel record
-      await supabaseHelpers.updatePersonnel(personnelId, {
-        photo_url: null,
-      });
-
-      toast({
-        title: "✅ Photo Removed",
-        description: "Personnel photo has been removed successfully",
-        duration: 3000,
-      });
+      // Delete photo from Firebase Storage
+      if (currentPhotoUrl.includes('firebasestorage.googleapis.com')) {
+        try {
+          const urlParts = currentPhotoUrl.split('/o/')[1];
+          if (urlParts) {
+            const filePath = decodeURIComponent(urlParts.split('?')[0]);
+            await deleteFile(STORAGE_BUCKETS.PERSONNEL_PHOTOS, filePath);
+          }
+        } catch (error) {
+          console.warn('Failed to delete photo from storage:', error);
+        }
+      }
 
       onPhotoUpdate?.(null);
+      toast({
+        title: "✅ Photo Removed",
+        description: "Personnel photo has been removed successfully.",
+        duration: 3000,
+      });
       setIsDialogOpen(false);
     } catch (error) {
       toast({
@@ -132,14 +130,6 @@ export function PersonnelPhotoUpload({
     } finally {
       setIsUploading(false);
     }
-  };
-
-  const uploadOptions = {
-    bucket: STORAGE_BUCKETS.PERSONNEL_PHOTOS,
-    folder: `personnel_${badgeNumber}`,
-    generateUniqueName: true,
-    maxSize: FILE_CONFIGS.IMAGES.maxSize,
-    allowedTypes: FILE_CONFIGS.IMAGES.allowedTypes,
   };
 
   if (!editable) {
@@ -187,7 +177,8 @@ export function PersonnelPhotoUpload({
 
           {/* File Upload */}
           <FileUpload
-            options={uploadOptions}
+            bucket={STORAGE_BUCKETS.PERSONNEL_PHOTOS}
+            folder={`personnel_${badgeNumber}`}
             config={FILE_CONFIGS.IMAGES}
             onUploadComplete={handleUploadComplete}
             onError={(error) => {

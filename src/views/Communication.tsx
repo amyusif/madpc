@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -48,9 +47,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import SendMessageModal from "@/components/modals/SendMessageAlertModal";
-import MessageDetailsModal from "@/components/modals/MessageDetailsModal";
 import SendCircularModal from "@/components/modals/SendCircularModal";
+import MessageDetailsModal from "@/components/modals/MessageDetailsModal";
 
 interface MessageWithRecipients {
   id: string;
@@ -68,20 +66,50 @@ interface MessageWithRecipients {
   }>;
 }
 
+interface Circular {
+  id: string;
+  title: string;
+  message: string;
+  unit: string;
+  recipient_count: number;
+  status: string;
+  created_at: string;
+}
+
+interface CommunicationItem {
+  id: string;
+  type: 'message' | 'circular';
+  subject: string;
+  body: string;
+  created_at: string;
+  created_by?: string;
+  recipients?: Array<{
+    id: string;
+    personnel_id: string;
+    email: string;
+    phone: string;
+    email_status?: string;
+    sms_status?: string;
+  }>;
+  unit?: string;
+  recipient_count?: number;
+  status?: string;
+}
+
 export default function Communication() {
-  const [showSendMessageModal, setShowSendMessageModal] = useState(false);
   const [showSendCircularModal, setShowSendCircularModal] = useState(false);
   const [messages, setMessages] = useState<MessageWithRecipients[]>([]);
-  const [circulars, setCirculars] = useState<any[]>([]);
+  const [circulars, setCirculars] = useState<Circular[]>([]);
   const [loading, setLoading] = useState(false);
   const [circularsLoading, setCircularsLoading] = useState(false);
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [messageToDelete, setMessageToDelete] = useState<MessageWithRecipients | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<CommunicationItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [channelFilter, setChannelFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
   const { toast } = useToast();
 
   const load = async () => {
@@ -117,12 +145,33 @@ export default function Communication() {
     loadCirculars();
   }, []);
 
-  // Helper functions for message analysis
-  const getChannelsUsed = (message: MessageWithRecipients) => {
-    if (!message.recipients || message.recipients.length === 0) return [];
+  // Combine messages and circulars into a single array
+  const allCommunications: CommunicationItem[] = [
+    ...messages.map(msg => ({
+      ...msg,
+      type: 'message' as const,
+      subject: msg.subject,
+      body: msg.body,
+    })),
+    ...circulars.map(circ => ({
+      ...circ,
+      type: 'circular' as const,
+      subject: circ.title,
+      body: circ.message,
+    }))
+  ];
 
-    const hasEmail = message.recipients.some(r => r.email && (r.email_status === "sent" || r.email_status === "pending"));
-    const hasSMS = message.recipients.some(r => r.phone && (r.sms_status === "sent" || r.sms_status === "pending"));
+  // Helper functions for message analysis
+  const getChannelsUsed = (item: CommunicationItem) => {
+    if (item.type === 'circular') {
+      // Circulars use both email and SMS
+      return ['email', 'sms'];
+    }
+    
+    if (!item.recipients || item.recipients.length === 0) return [];
+
+    const hasEmail = item.recipients.some(r => r.email && (r.email_status === "sent" || r.email_status === "pending"));
+    const hasSMS = item.recipients.some(r => r.phone && (r.sms_status === "sent" || r.sms_status === "pending"));
 
     const channels = [];
     if (hasEmail) channels.push("email");
@@ -130,12 +179,17 @@ export default function Communication() {
     return channels;
   };
 
-  const getDeliveryStats = (message: MessageWithRecipients) => {
-    if (!message.recipients) return { sent: 0, failed: 0, pending: 0 };
+  const getDeliveryStats = (item: CommunicationItem) => {
+    if (item.type === 'circular') {
+      // For circulars, show recipient count
+      return { sent: item.recipient_count || 0, failed: 0, pending: 0 };
+    }
+    
+    if (!item.recipients) return { sent: 0, failed: 0, pending: 0 };
 
     let sent = 0, failed = 0, pending = 0;
 
-    message.recipients.forEach(r => {
+    item.recipients.forEach(r => {
       if (r.email_status === "sent" || r.sms_status === "sent") sent++;
       else if (r.email_status === "failed" || r.sms_status === "failed") failed++;
       else pending++;
@@ -144,60 +198,72 @@ export default function Communication() {
     return { sent, failed, pending };
   };
 
-  const handleDelete = (message: MessageWithRecipients) => {
-    setMessageToDelete(message);
+  const handleDelete = (item: CommunicationItem) => {
+    setItemToDelete(item);
     setDeleteDialogOpen(true);
   };
 
   const confirmDelete = async () => {
-    if (!messageToDelete) return;
+    if (!itemToDelete) return;
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/messages/${messageToDelete.id}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error("Failed to delete message");
+      if (itemToDelete.type === 'message') {
+        const res = await fetch(`/api/messages/${itemToDelete.id}`, {
+          method: "DELETE",
+        });
+        if (!res.ok) throw new Error("Failed to delete message");
+      } else {
+        // Handle circular deletion if needed
+        const res = await fetch(`/api/circulars/${itemToDelete.id}`, {
+          method: "DELETE",
+        });
+        if (!res.ok) throw new Error("Failed to delete circular");
+      }
 
       toast({
-        title: "✅ Message Deleted",
-        description: `Message "${messageToDelete.subject}" has been deleted.`,
+        title: "✅ Item Deleted",
+        description: `${itemToDelete.type === 'message' ? 'Message' : 'Circular'} "${itemToDelete.subject}" has been deleted.`,
       });
       load(); // Refresh messages
+      loadCirculars(); // Refresh circulars
     } catch (error: any) {
       toast({
         title: "❌ Delete Failed",
-        description: error?.message || "Failed to delete message",
+        description: error?.message || "Failed to delete item",
         variant: "destructive",
       });
     } finally {
       setIsDeleting(false);
       setDeleteDialogOpen(false);
-      setMessageToDelete(null);
+      setItemToDelete(null);
     }
   };
 
   // Enhanced filtering
-  const filteredMessages = messages.filter((message) => {
+  const filteredCommunications = allCommunications.filter((item) => {
     // Search filter
     const matchesSearch = searchTerm === "" ||
-      message.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      message.body.toLowerCase().includes(searchTerm.toLowerCase());
+      item.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.body.toLowerCase().includes(searchTerm.toLowerCase());
+
+    // Type filter
+    const matchesType = typeFilter === "all" || item.type === typeFilter;
 
     // Channel filter
-    const channels = getChannelsUsed(message);
+    const channels = getChannelsUsed(item);
     const matchesChannel = channelFilter === "all" ||
       (channelFilter === "email" && channels.includes("email")) ||
       (channelFilter === "sms" && channels.includes("sms")) ||
       (channelFilter === "both" && channels.includes("email") && channels.includes("sms"));
 
     // Status filter
-    const stats = getDeliveryStats(message);
+    const stats = getDeliveryStats(item);
     const matchesStatus = statusFilter === "all" ||
       (statusFilter === "sent" && stats.sent > 0) ||
       (statusFilter === "failed" && stats.failed > 0) ||
       (statusFilter === "pending" && stats.pending > 0);
 
-    return matchesSearch && matchesChannel && matchesStatus;
+    return matchesSearch && matchesType && matchesChannel && matchesStatus;
   });
 
   return (
@@ -209,24 +275,16 @@ export default function Communication() {
             Communication Center
           </h1>
           <p className="text-muted-foreground">
-            Manage messages, alerts, and circulars
+            View all communications, alerts, and circulars
           </p>
         </div>
         <div className="flex gap-2">
           <Button
-            variant="outline"
-            className="gap-2"
+            className="gap-2 bg-blue-600 hover:bg-blue-700"
             onClick={() => setShowSendCircularModal(true)}
           >
             <FileCheck className="w-4 h-4" />
             Send Circular
-          </Button>
-          <Button
-            className="gap-2 bg-blue-600 hover:bg-blue-700"
-            onClick={() => setShowSendMessageModal(true)}
-          >
-            <MessageSquare className="w-4 h-4" />
-            Send Message/Alert
           </Button>
         </div>
       </div>
@@ -242,6 +300,17 @@ export default function Communication() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
+
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger className="w-32">
+            <SelectValue placeholder="Type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            <SelectItem value="message">Messages</SelectItem>
+            <SelectItem value="circular">Circulars</SelectItem>
+          </SelectContent>
+        </Select>
 
         <Select value={channelFilter} onValueChange={setChannelFilter}>
           <SelectTrigger className="w-40">
@@ -267,320 +336,198 @@ export default function Communication() {
           </SelectContent>
         </Select>
 
-        <Button variant="outline" size="sm" onClick={load} className="gap-2">
+        <Button variant="outline" size="sm" onClick={() => { load(); loadCirculars(); }} className="gap-2">
           <RefreshCw className="w-4 h-4" />
           Refresh
         </Button>
       </div>
 
-      {/* Communication Tabs */}
-      <Tabs defaultValue="messages" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="messages" className="gap-2">
-            <MessageSquare className="w-4 h-4" />
-            Messages
-          </TabsTrigger>
-          <TabsTrigger value="alerts" className="gap-2">
-            <AlertTriangle className="w-4 h-4" />
-            Alerts
-          </TabsTrigger>
-          <TabsTrigger value="circulars" className="gap-2">
-            <FileCheck className="w-4 h-4" />
-            Circulars
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="messages" className="space-y-4">
-          {loading ? (
-            <div className="flex items-center justify-center py-16 text-muted-foreground">Loading messages...</div>
-          ) : filteredMessages.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-                <MessageSquare className="w-16 h-16 text-muted-foreground/50 mb-6" />
-                <h3 className="text-lg font-semibold mb-2">
-                  {messages.length === 0 ? "No Messages Found" : "No matching messages"}
-                </h3>
-                <p className="text-muted-foreground mb-6 max-w-md">
-                  {messages.length === 0
-                    ? "Start communicating with your team. Send messages to individual personnel or groups."
-                    : "Try adjusting your search terms to find what you're looking for."}
-                </p>
-                {messages.length === 0 && (
-                  <Button className="gap-2" onClick={() => setShowSendMessageModal(true)}>
-                    <Plus className="w-4 h-4" />
-                    Send Message
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="bg-white rounded-lg border shadow-sm">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Subject
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Message
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date Sent
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Channel
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Recipients
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredMessages.map((message) => {
-                    const channels = getChannelsUsed(message);
-                    const stats = getDeliveryStats(message);
-
-                    return (
-                      <tr key={message.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900 line-clamp-1">
-                            {message.subject}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900 line-clamp-2 max-w-md">
-                            {message.body}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {new Date(message.created_at).toLocaleDateString()}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {new Date(message.created_at).toLocaleTimeString()}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            {channels.includes("email") && (
-                              <div className="flex items-center gap-1 bg-blue-50 px-2 py-1 rounded-full">
-                                <Mail className="w-4 h-4 text-blue-600" />
-                                <span className="text-xs font-medium text-blue-700">Email</span>
-                              </div>
-                            )}
-                            {channels.includes("sms") && (
-                              <div className="flex items-center gap-1 bg-green-50 px-2 py-1 rounded-full">
-                                <MessageCircle className="w-4 h-4 text-green-600" />
-                                <span className="text-xs font-medium text-green-700">SMS</span>
-                              </div>
-                            )}
-                            {channels.length === 0 && (
-                              <span className="text-xs text-gray-400">No channels</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <Badge variant="secondary" className="text-xs">
-                            {message.recipients?.length || 0} recipients
-                          </Badge>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            {stats.sent > 0 && (
-                              <Badge variant="default" className="text-xs bg-green-100 text-green-800">
-                                {stats.sent} sent
-                              </Badge>
-                            )}
-                            {stats.failed > 0 && (
-                              <Badge variant="destructive" className="text-xs">
-                                {stats.failed} failed
-                              </Badge>
-                            )}
-                            {stats.pending > 0 && (
-                              <Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-800">
-                                {stats.pending} pending
-                              </Badge>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48">
-                              <DropdownMenuItem
-                                onClick={() => setSelectedMessageId(message.id)}
-                                className="cursor-pointer"
-                              >
-                                <Eye className="mr-2 h-4 w-4" />
-                                View Details
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleDelete(message)}
-                                className="cursor-pointer text-red-600 focus:text-red-600"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          <MessageDetailsModal
-            messageId={selectedMessageId}
-            open={!!selectedMessageId}
-            onOpenChange={(open) => !open && setSelectedMessageId(null)}
-          />
-        </TabsContent>
-
-        <TabsContent value="alerts" className="space-y-4">
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-              <AlertTriangle className="w-16 h-16 text-muted-foreground/50 mb-6" />
-              <h3 className="text-lg font-semibold mb-2">No Alerts Found</h3>
-              <p className="text-muted-foreground mb-6 max-w-md">
-                Send urgent alerts to personnel for immediate attention and
-                action.
-              </p>
-              <Button
-                variant="destructive"
-                className="gap-2"
-                onClick={() => setShowSendMessageModal(true)}
-              >
-                <AlertTriangle className="w-4 h-4" />
-                Send Alert
+      {/* Communications Table */}
+      {loading || circularsLoading ? (
+        <div className="flex items-center justify-center py-16 text-muted-foreground">
+          <Loader2 className="w-8 h-8 animate-spin mr-2" />
+          Loading communications...
+        </div>
+      ) : filteredCommunications.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+            <MessageSquare className="w-16 h-16 text-muted-foreground/50 mb-6" />
+            <h3 className="text-lg font-semibold mb-2">
+              {allCommunications.length === 0 ? "No Communications Found" : "No matching communications"}
+            </h3>
+            <p className="text-muted-foreground mb-6 max-w-md">
+              {allCommunications.length === 0
+                ? "Start communicating with your team. Send circulars to all personnel or individual messages from the personnel page."
+                : "Try adjusting your search terms to find what you're looking for."}
+            </p>
+            {allCommunications.length === 0 && (
+              <Button className="gap-2" onClick={() => setShowSendCircularModal(true)}>
+                <Plus className="w-4 h-4" />
+                Send Circular
               </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="bg-white rounded-lg border shadow-sm">
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Type
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Subject
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Message
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Date Sent
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Channel
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Recipients
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredCommunications.map((item) => {
+                const channels = getChannelsUsed(item);
+                const stats = getDeliveryStats(item);
 
-        <TabsContent value="circulars" className="space-y-4">
-          <Card>
-            <CardContent className="p-0">
-              {circularsLoading ? (
-                <div className="flex items-center justify-center py-16">
-                  <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-                </div>
-              ) : circulars.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <FileCheck className="w-16 h-16 text-muted-foreground/50 mb-6" />
-                  <h3 className="text-lg font-semibold mb-2">No Circulars Found</h3>
-                  <p className="text-muted-foreground mb-6 max-w-md">
-                    Disseminate official circulars and notices to all personnel for
-                    reading and acknowledgment.
-                  </p>
-                  <Button
-                    variant="outline"
-                    className="gap-2"
-                    onClick={() => setShowSendCircularModal(true)}
-                  >
-                    <Plus className="w-4 h-4" />
-                    Create Circular
-                  </Button>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-gray-50 border-b">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Title
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Unit
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Recipients
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Channels
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Date Sent
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Status
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {circulars.map((circular: any) => (
-                        <tr key={circular.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4">
-                            <div className="flex items-center">
-                              <FileCheck className="w-5 h-5 text-blue-500 mr-3" />
-                              <div>
-                                <div className="text-sm font-medium text-gray-900">
-                                  {circular.title}
-                                </div>
-                                <div className="text-sm text-gray-500 truncate max-w-xs">
-                                  {circular.message}
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                              {circular.unit === "all" ? "All Personnel" : circular.unit}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {circular.recipient_count} personnel
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center gap-2">
-                              <div className="flex items-center gap-1 bg-blue-50 px-2 py-1 rounded-full">
-                                <Mail className="w-4 h-4 text-blue-600" />
-                                <span className="text-xs font-medium text-blue-700">Email</span>
-                              </div>
-                              <div className="flex items-center gap-1 bg-green-50 px-2 py-1 rounded-full">
-                                <MessageCircle className="w-4 h-4 text-green-600" />
-                                <span className="text-xs font-medium text-green-700">SMS</span>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {new Date(circular.created_at).toLocaleDateString()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              {circular.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                return (
+                  <tr key={`${item.type}-${item.id}`} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <Badge 
+                        variant={item.type === 'circular' ? 'default' : 'secondary'}
+                        className="text-xs"
+                      >
+                        {item.type === 'circular' ? (
+                          <>
+                            <FileCheck className="w-3 h-3 mr-1" />
+                            Circular
+                          </>
+                        ) : (
+                          <>
+                            <MessageSquare className="w-3 h-3 mr-1" />
+                            Message
+                          </>
+                        )}
+                      </Badge>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900 line-clamp-1">
+                        {item.subject}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-gray-900 line-clamp-2 max-w-md">
+                        {item.body}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {new Date(item.created_at).toLocaleDateString()}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {new Date(item.created_at).toLocaleTimeString()}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        {channels.includes("email") && (
+                          <div className="flex items-center gap-1 bg-blue-50 px-2 py-1 rounded-full">
+                            <Mail className="w-4 h-4 text-blue-600" />
+                            <span className="text-xs font-medium text-blue-700">Email</span>
+                          </div>
+                        )}
+                        {channels.includes("sms") && (
+                          <div className="flex items-center gap-1 bg-green-50 px-2 py-1 rounded-full">
+                            <MessageCircle className="w-4 h-4 text-green-600" />
+                            <span className="text-xs font-medium text-green-700">SMS</span>
+                          </div>
+                        )}
+                        {channels.length === 0 && (
+                          <span className="text-xs text-gray-400">No channels</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <Badge variant="secondary" className="text-xs">
+                        {item.type === 'circular' 
+                          ? `${item.recipient_count || 0} personnel`
+                          : `${item.recipients?.length || 0} recipients`
+                        }
+                      </Badge>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        {stats.sent > 0 && (
+                          <Badge variant="default" className="text-xs bg-green-100 text-green-800">
+                            {stats.sent} sent
+                          </Badge>
+                        )}
+                        {stats.failed > 0 && (
+                          <Badge variant="destructive" className="text-xs">
+                            {stats.failed} failed
+                          </Badge>
+                        )}
+                        {stats.pending > 0 && (
+                          <Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-800">
+                            {stats.pending} pending
+                          </Badge>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuItem
+                            onClick={() => setSelectedMessageId(item.id)}
+                            className="cursor-pointer"
+                          >
+                            <Eye className="mr-2 h-4 w-4" />
+                            View Details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleDelete(item)}
+                            className="cursor-pointer text-red-600 focus:text-red-600"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Message</AlertDialogTitle>
+            <AlertDialogTitle>Delete {itemToDelete?.type === 'circular' ? 'Circular' : 'Message'}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete the message "{messageToDelete?.subject}"?
+              Are you sure you want to delete the {itemToDelete?.type === 'circular' ? 'circular' : 'message'} "{itemToDelete?.subject}"?
               This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -607,11 +554,14 @@ export default function Communication() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Modals */}
-      <SendMessageModal
-        open={showSendMessageModal}
-        onOpenChange={setShowSendMessageModal}
+      {/* Message Details Modal */}
+      <MessageDetailsModal
+        messageId={selectedMessageId}
+        open={!!selectedMessageId}
+        onOpenChange={(open) => !open && setSelectedMessageId(null)}
       />
+
+      {/* Send Circular Modal */}
       <SendCircularModal
         open={showSendCircularModal}
         onOpenChange={setShowSendCircularModal}

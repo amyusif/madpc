@@ -13,15 +13,14 @@ export async function GET() {
       const circulars = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
       return NextResponse.json({ circulars });
     } else {
-      const { getServerSupabase } = await import("@/integrations/supabase/server");
-      const supabase = getServerSupabase();
-      const { data, error } = await supabase
-        .from("circulars")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) throw new Error(error.message);
-      return NextResponse.json({ circulars: data });
+      // Fallback to Firebase if not using Firestore flag
+      const { getDb } = await import("@/integrations/firebase/client");
+      const { collection, query, orderBy, getDocs } = await import("firebase/firestore");
+      const db = getDb();
+      const q = query(collection(db, "circulars"), orderBy("created_at", "desc"));
+      const snap = await getDocs(q);
+      const circulars = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+      return NextResponse.json({ circulars });
     }
   } catch (error: any) {
     console.error("Error fetching circulars:", error);
@@ -102,40 +101,36 @@ export async function POST(request: NextRequest) {
         }
       });
     } else {
-      const { getServerSupabase } = await import("@/integrations/supabase/server");
-      const supabase = getServerSupabase();
+      // Fallback to Firebase if not using Firestore flag
+      const { getDb } = await import("@/integrations/firebase/client");
+      const { collection, addDoc, doc, setDoc } = await import("firebase/firestore");
+      const db = getDb();
 
-      // Create circular
-      const { data: circular, error } = await supabase
-        .from("circulars")
-        .insert([{
-          title,
-          message,
-          unit,
-          channels: channels || ["email", "sms"],
-          recipient_count: recipients.length,
-          status: "sent",
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }])
-        .select()
-        .single();
-
-      if (error) throw new Error(error.message);
+      // Create circular document
+      const circularRef = await addDoc(collection(db, "circulars"), {
+        title,
+        message,
+        unit,
+        channels: channels || ["email", "sms"],
+        recipient_count: recipients.length,
+        status: "sent",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
 
       // Create circular recipients
-      const { error: recipientsError } = await supabase
-        .from("circular_recipients")
-        .insert(
-          recipients.map((personnelId: string) => ({
-            circular_id: circular.id,
-            personnel_id: personnelId,
-            email_status: "pending",
-            sms_status: "pending",
-          }))
-        );
+      const recipientPromises = recipients.map(async (personnelId: string) => {
+        const recipientRef = doc(db, "circular_recipients", `${circularRef.id}_${personnelId}`);
+        return setDoc(recipientRef, {
+          circular_id: circularRef.id,
+          personnel_id: personnelId,
+          email_status: "pending",
+          sms_status: "pending",
+          created_at: new Date().toISOString(),
+        });
+      });
 
-      if (recipientsError) throw new Error(recipientsError.message);
+      await Promise.all(recipientPromises);
 
       // Send notifications (email + SMS)
       try {
@@ -158,7 +153,18 @@ export async function POST(request: NextRequest) {
         console.error("Notification error:", notificationError);
       }
 
-      return NextResponse.json({ circular });
+      return NextResponse.json({
+        circular: {
+          id: circularRef.id,
+          title,
+          message,
+          unit,
+          channels: channels || ["email", "sms"],
+          recipient_count: recipients.length,
+          status: "sent",
+          created_at: new Date().toISOString(),
+        }
+      });
     }
   } catch (error: any) {
     console.error("Error creating circular:", error);

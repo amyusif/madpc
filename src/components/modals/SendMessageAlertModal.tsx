@@ -18,7 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { supabaseHelpers } from "@/integrations/supabase/client";
+import { db } from "@/integrations/database";
 import { useAppData } from "@/hooks/useAppData";
 import { MessageSquare, AlertTriangle, Loader2, Send } from "lucide-react";
 

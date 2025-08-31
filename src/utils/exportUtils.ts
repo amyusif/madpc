@@ -1,4 +1,6 @@
-import type { Personnel } from "@/integrations/supabase/client";
+import { saveAs } from "file-saver";
+import * as XLSX from "xlsx";
+import type { Personnel } from "@/integrations/database";
 
 // CSV Export
 export const exportToCSV = (

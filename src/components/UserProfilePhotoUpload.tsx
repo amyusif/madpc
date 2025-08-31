@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { FileUpload } from "@/components/ui/file-upload";
-import { FILE_CONFIGS, STORAGE_BUCKETS, type FileUploadResult } from "@/utils/fileStorage";
+import { FILE_CONFIGS, STORAGE_BUCKETS, type FileUploadResult, deleteFile } from "@/utils/fileStorage";
 import {
   Dialog,
   DialogContent,
@@ -15,10 +15,9 @@ import {
 import { Camera, Upload, Trash2, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
 
 interface UserProfilePhotoUploadProps {
-  currentPhotoUrl?: string;
+  currentPhotoUrl?: string | null;
   onPhotoUpdate?: (photoUrl: string | null) => void;
   size?: "sm" | "md" | "lg" | "xl";
   editable?: boolean;
@@ -36,7 +35,9 @@ export function UserProfilePhotoUpload({
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [photoUrl, setPhotoUrl] = useState<string | null>(currentPhotoUrl || null);
   const { toast } = useToast();
-  const { user, profile } = useAuth();
+  const { user, profile, updateProfile } = useAuth();
+  
+  if (!user) return null; // Exit early if no user is authenticated
 
   const sizeClasses = {
     sm: "w-8 h-8",
@@ -65,9 +66,7 @@ export function UserProfilePhotoUpload({
   };
 
   const handleUploadComplete = async (result: FileUploadResult) => {
-    if (!result.success || !result.url) return;
-
-    const uploadedFile = { url: result.url } as const;
+    if (!result.success || !result.url || !user?.id) return;
 
     setIsUploading(true);
 
@@ -77,38 +76,29 @@ export function UserProfilePhotoUpload({
         try {
           // Extract file path from Firebase Storage URL
           const urlParts = photoUrl.split('/o/')[1];
-          const oldPath = decodeURIComponent(urlParts.split('?')[0]);
-          await fetch('/api/upload/delete', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ filePath: oldPath }),
-          });
+          if (urlParts) {
+            const oldPath = decodeURIComponent(urlParts.split('?')[0]);
+            const deleteResult = await deleteFile(STORAGE_BUCKETS.USER_PROFILES, oldPath);
+            if (!deleteResult.success) {
+              console.warn('Failed to delete old photo:', deleteResult.error);
+            }
+          }
         } catch (error) {
           console.warn('Failed to delete old photo:', error);
         }
       }
 
-      // Update user profile with new photo URL
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          avatar_url: uploadedFile.url,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", user?.id);
-
-      if (error) {
-        throw error;
-      }
+      // Update profile using auth context
+      await updateProfile({ avatar_url: result.url });
 
       toast({
         title: "✅ Photo Updated",
-        description: "Your profile photo has been updated successfully",
+        description: "Your profile photo has been updated successfully.",
         duration: 3000,
       });
 
-      setPhotoUrl(uploadedFile.url);
-      onPhotoUpdate?.(uploadedFile.url);
+      setPhotoUrl(result.url);
+      onPhotoUpdate?.(result.url);
       setIsDialogOpen(false);
     } catch (error) {
       console.error("Profile update error:", error);
@@ -128,43 +118,33 @@ export function UserProfilePhotoUpload({
     setIsUploading(true);
 
     try {
-      // Delete photo from Google Cloud Storage if it exists
+      // Delete photo from Firebase Storage if it exists
       if (photoUrl.includes('firebasestorage.googleapis.com')) {
         try {
-          // Extract file path from Firebase Storage URL
           const urlParts = photoUrl.split('/o/')[1];
-          const filePath = decodeURIComponent(urlParts.split('?')[0]);
-          await fetch('/api/upload/delete', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ filePath }),
-          });
+          if (urlParts) {
+            const filePath = decodeURIComponent(urlParts.split('?')[0]);
+            const deleteResult = await deleteFile(STORAGE_BUCKETS.USER_PROFILES, filePath);
+            if (!deleteResult.success) {
+              console.warn('Failed to delete photo from storage:', deleteResult.error);
+            }
+          }
         } catch (error) {
           console.warn('Failed to delete photo from storage:', error);
         }
       }
 
-      // Update user profile
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          avatar_url: null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", user.id);
-
-      if (error) {
-        throw error;
-      }
-
-      setPhotoUrl(null);
-      onPhotoUpdate?.(null);
+      // Update profile using auth context
+      await updateProfile({ avatar_url: null });
 
       toast({
         title: "✅ Photo Removed",
-        description: "Your profile photo has been removed successfully",
+        description: "Your profile photo has been removed successfully.",
         duration: 3000,
       });
+
+      setPhotoUrl(null);
+      onPhotoUpdate?.(null);
       setIsDialogOpen(false);
     } catch (error) {
       console.error("Photo removal error:", error);
@@ -177,8 +157,6 @@ export function UserProfilePhotoUpload({
       setIsUploading(false);
     }
   };
-
-
 
   if (!editable) {
     return (
@@ -197,7 +175,10 @@ export function UserProfilePhotoUpload({
           <AvatarFallback className="text-lg">{getInitials()}</AvatarFallback>
         </Avatar>
         {showChangeButton && (
-          <div className="absolute inset-0 bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
+          <div 
+            className="absolute inset-0 bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
+            onClick={() => setIsDialogOpen(true)}
+          >
             <Camera className="w-6 h-6 text-white" />
           </div>
         )}
@@ -237,11 +218,8 @@ export function UserProfilePhotoUpload({
 
                 {/* File Upload */}
                 <FileUpload
-                  options={{
-                    bucket: STORAGE_BUCKETS.USER_PROFILES,
-                    folder: `users/${user?.id}`,
-                    generateUniqueName: true,
-                  }}
+                  bucket={STORAGE_BUCKETS.USER_PROFILES}
+                  folder={`users/${user?.id}`}
                   config={FILE_CONFIGS.IMAGES}
                   onUploadComplete={handleUploadComplete}
                   onError={(error) => {

@@ -47,21 +47,15 @@ export default function Reports() {
     activeAlerts: 0,
   });
 
-  // Handle Supabase connection error
-  useEffect(() => {
-    if (dataError) {
-      console.error("Supabase error:", dataError);
-      toast({
-        title: "🔌 Connection Issue",
-        description:
-          dataError.includes("offline") || dataError.includes("network")
-            ? "You're currently offline. Some data may not be available."
-            : "Failed to load data from server. Please check your connection.",
-        variant: "destructive",
-        duration: 6000,
-      });
-    }
-  }, [dataError, toast]);
+  // Handle Firebase connection error
+  if (dataError) {
+    console.error("Firebase error:", dataError);
+    toast({
+      title: "⚠️ Data Error",
+      description: "Failed to load some data. Please try again.",
+      variant: "destructive",
+    });
+  }
 
   // Calculate stats from app data with error handling
   useEffect(() => {

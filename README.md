@@ -1,10 +1,10 @@
 # MADPC - Manso Adubia District Police Command System
 
-A modern police command and control system built with Next.js 15, Supabase, and TypeScript.
+A modern police command and control system built with Next.js 15, Firebase Firestore, and TypeScript.
 
 ## Features
 
-- 🔐 **Secure Authentication** - Supabase Auth integration
+- 🔐 **Secure Authentication** - Firebase Auth integration
 - 👮 **Personnel Management** - Track officers and staff
 - 📋 **Case Management** - Handle investigations and incidents
 - 📅 **Duty Scheduling** - Assign and track duties
@@ -12,25 +12,26 @@ A modern police command and control system built with Next.js 15, Supabase, and 
 - 💬 **Communication** - Internal messaging system
 - 📱 **Responsive Design** - Works on all devices
 - 🎨 **Modern UI** - Built with Tailwind CSS and Radix UI
+- 🗄️ **Firebase Database** - Scalable NoSQL database with real-time updates
 
 ## Tech Stack
 
 - **Framework**: Next.js 15 (App Router)
-- **Database**: Supabase (PostgreSQL)
-- **Authentication**: Supabase Auth
+- **Database**: Firebase Firestore (NoSQL)
+- **Authentication**: Firebase Auth
 - **Styling**: Tailwind CSS
 - **UI Components**: Radix UI
 - **Forms**: React Hook Form + Zod
 - **Charts**: Recharts
 - **TypeScript**: Full type safety
 
-## Getting Started
+## Quick Start
 
 ### Prerequisites
 
 - Node.js 18+
 - npm or pnpm
-- Supabase account
+- Firebase account
 
 ### Installation
 
@@ -53,7 +54,9 @@ npm install
 cp env.example .env.local
 ```
 
-4. Configure your Supabase credentials in `.env.local`
+4. **Configure Firebase** credentials in `.env.local`:
+   - Set up Firebase project and Firestore database
+   - Add your Firebase configuration variables
 
 5. Run the development server:
 
@@ -62,6 +65,26 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+## Firebase Setup
+
+This system uses Firebase Firestore for all data operations. You'll need to:
+
+1. **Create a Firebase project** at [Firebase Console](https://console.firebase.google.com/)
+2. **Enable Firestore Database** in your project
+3. **Set up Authentication** (Email/Password)
+4. **Configure environment variables** with your Firebase project details
+
+### Required Firebase Environment Variables
+
+```bash
+NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
+NEXT_PUBLIC_FIREBASE_APP_ID=your_firebase_app_id
+```
 
 ## Deployment
 
@@ -81,8 +104,15 @@ For detailed deployment instructions, see [DEPLOYMENT.md](./DEPLOYMENT.md).
 Required environment variables for deployment:
 
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+# Firebase Configuration (REQUIRED)
+NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
+NEXT_PUBLIC_FIREBASE_APP_ID=your_firebase_app_id
+
+# App Configuration
 NEXT_PUBLIC_APP_NAME="Manso Adubia District Police Command"
 NEXT_PUBLIC_APP_VERSION="1.0.0"
 ```
@@ -95,7 +125,7 @@ src/
 ├── components/          # Reusable UI components
 ├── views/              # Page components
 ├── hooks/              # Custom React hooks
-├── integrations/       # External service integrations
+├── integrations/       # Firebase integrations
 ├── contexts/           # React contexts
 └── lib/                # Utility functions
 ```
@@ -122,4 +152,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Support
 
-For support and questions, please contact the MADPC Development Team.
+For support and questions:
+- **Firebase Setup**: Check Firebase Console and documentation
+- **General Issues**: Contact the MADPC Development Team
+- **Deployment**: See [DEPLOYMENT.md](./DEPLOYMENT.md)

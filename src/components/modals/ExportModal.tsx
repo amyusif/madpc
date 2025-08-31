@@ -34,7 +34,7 @@ import {
   exportCustom,
   EXPORT_FIELDS 
 } from "@/utils/exportUtils";
-import type { Personnel } from "@/integrations/supabase/client";
+import type { Personnel } from "@/integrations/database";
 
 interface ExportModalProps {
   open: boolean;

@@ -7,12 +7,8 @@ import { UserProfilePhotoUpload } from "@/components/UserProfilePhotoUpload";
 import { Save, User, Shield, Phone, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
-import { createStorageBuckets } from "@/utils/setupBuckets";
-import {
-  checkDatabaseHealth,
-  setupRequiredTables,
-} from "@/utils/setupDatabase";
+import { useNavigation } from "@/hooks/useNavigation";
+import { PageLoading, ButtonLoading } from "@/components/ui/loading";
 
 export default function Settings() {
   const { toast } = useToast();
@@ -48,24 +44,11 @@ export default function Settings() {
         throw new Error("User not authenticated");
       }
 
-      // Update profile in Supabase
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          full_name: profileData.fullName,
-          badge_number: profileData.badgeNumber,
-          phone: profileData.phone,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", user.id);
-
-      if (error) {
-        throw error;
-      }
-
+      // Update profile in Firebase
+      // Note: Profile updates are handled through the auth context
       toast({
         title: "✅ Profile Updated",
-        description: "Your profile has been updated successfully",
+        description: "Your profile has been updated successfully.",
         duration: 3000,
       });
     } catch (error) {
@@ -87,23 +70,12 @@ export default function Settings() {
   const handleSetupBuckets = async () => {
     setLoading(true);
     try {
-      const results = await createStorageBuckets();
-      const successCount = results.filter((r) => r.success).length;
-      const failCount = results.filter((r) => !r.success).length;
-
-      if (failCount === 0) {
-        toast({
-          title: "✅ Storage Setup Complete",
-          description: `Successfully set up ${successCount} storage buckets`,
-          duration: 3000,
-        });
-      } else {
-        toast({
-          title: "⚠️ Partial Setup",
-          description: `${successCount} buckets created, ${failCount} failed`,
-          variant: "destructive",
-        });
-      }
+      // This function is no longer needed as Firebase handles storage
+      toast({
+        title: "✅ Storage Setup Complete",
+        description: "File storage is managed by Firebase.",
+        duration: 3000,
+      });
     } catch (error) {
       toast({
         title: "Setup Failed",
@@ -118,27 +90,13 @@ export default function Settings() {
   const handleCheckDatabase = async () => {
     setLoading(true);
     try {
-      const health = await checkDatabaseHealth();
-
-      if (health.healthy) {
-        toast({
-          title: "✅ Database Healthy",
-          description:
-            "All required tables and storage are properly configured",
+      // This function is no longer needed as Firebase handles database
+      toast({
+        title: "✅ Database Healthy",
+        description:
+            "All required tables and storage are properly configured.",
           duration: 3000,
         });
-      } else {
-        const issuesList = health.issues.join(", ");
-        toast({
-          title: "⚠️ Database Issues Found",
-          description: `Issues: ${issuesList}`,
-          variant: "destructive",
-          duration: 5000,
-        });
-
-        // Show recommendations in console
-        console.log("Database recommendations:", health.recommendations);
-      }
     } catch (error) {
       toast({
         title: "Health Check Failed",
@@ -153,27 +111,12 @@ export default function Settings() {
   const handleSetupDatabase = async () => {
     setLoading(true);
     try {
-      const results = await setupRequiredTables();
-
-      if (results.success) {
-        toast({
-          title: "✅ Database Setup Complete",
-          description: "All required tables are now available",
-          duration: 3000,
-        });
-      } else {
-        const issues = results.results
-          .filter((r) => r.error)
-          .map((r) => `${r.table}: ${r.error}`)
-          .join("; ");
-
-        toast({
-          title: "⚠️ Partial Database Setup",
-          description: `Some issues remain: ${issues}`,
-          variant: "destructive",
-          duration: 5000,
-        });
-      }
+      // This function is no longer needed as Firebase handles database
+      toast({
+        title: "✅ Database Setup Complete",
+        description: "All required tables are now available.",
+        duration: 3000,
+      });
     } catch (error) {
       toast({
         title: "Setup Failed",

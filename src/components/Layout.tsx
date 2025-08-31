@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useRefresh } from "@/hooks/useRefresh";
 import { LogoutConfirmModal } from "./modals/LogoutConfirmModal";
 import { NotificationDropdown } from "./NotificationDropdown";
+import { DatabaseStatus } from "./DatabaseStatus";
 
 interface LayoutProps {
   children: React.ReactNode;

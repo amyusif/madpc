@@ -11,7 +11,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAppData } from "@/hooks/useAppData";
 import { useAutoRefresh } from "@/hooks/useRefresh";
-import { supabaseHelpers } from "@/integrations/supabase/client";
+import { db } from "@/integrations/database";
 import { AlertTriangle, Loader2, Trash2 as TrashIcon } from "lucide-react";
 
 interface DeleteCaseModalProps {
@@ -42,8 +42,8 @@ export default function DeleteCaseModal({
 
       console.log("Attempting to delete case:", caseData.id);
 
-      // Delete case from Supabase
-      await supabaseHelpers.deleteCase(caseData.id);
+      // Delete case from Firebase
+      await db.deleteCase(caseData.id);
 
       console.log("Case deleted successfully");
 

@@ -17,7 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { supabaseHelpers } from "@/integrations/supabase/client";
+import { db } from "@/integrations/database";
 import { useAppData } from "@/hooks/useAppData";
 import { Loader2, FileText } from "lucide-react";
 
@@ -57,9 +57,9 @@ export default function CreateCaseModal({
   // Fetch active personnel for assignment
   const fetchActivePersonnel = async () => {
     try {
-      console.log("Fetching active personnel from Supabase");
+      console.log("Fetching active personnel from Firebase");
 
-      const allPersonnel = await supabaseHelpers.getPersonnel();
+      const allPersonnel = await db.getPersonnel();
 
       // Filter active personnel
       const activePersonnel = allPersonnel
@@ -106,9 +106,9 @@ export default function CreateCaseModal({
         status: "open" as const,
       };
 
-      // Insert case into Supabase
-      console.log("Creating case in Supabase:", caseData);
-      const createdCase = await supabaseHelpers.createCase(caseData);
+      // Insert case into Firebase
+      console.log("Creating case in Firebase:", caseData);
+      const createdCase = await db.createCase(caseData);
       console.log("Case created successfully with ID:", createdCase.id);
 
       toast({

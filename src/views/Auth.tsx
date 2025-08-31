@@ -18,7 +18,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigation } from "@/hooks/useNavigation";
 import { PageLoading, ButtonLoading } from "@/components/ui/loading";
-import { sessionUtils } from "@/integrations/supabase/client";
 
 // SSR compatibility check
 const isClient = typeof window !== "undefined";
@@ -68,7 +67,7 @@ export default function Auth() {
 
     try {
       // Clear any stale session data before login
-      sessionUtils.clearStaleSession();
+      // Note: Firebase handles session management automatically
 
       await signIn(loginData.email, loginData.password);
 

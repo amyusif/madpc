@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSupabase } from "@/integrations/supabase/server";
+import { db } from "@/integrations/database";
 
 export async function POST(req: NextRequest) {
   const { identifier } = await req.json();
@@ -13,18 +13,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ email: input });
   }
 
-  const supabase = getServerSupabase();
-  // Case-insensitive match on username
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("email")
-    .ilike("username", input)
-    .single();
+  try {
+    // Get personnel from Firebase and find by badge number (username)
+    const personnel = await db.getPersonnel();
+    const profile = personnel.find(p => 
+      p.badge_number.toLowerCase() === input.toLowerCase()
+    );
 
-  if (error || !data?.email) {
-    return NextResponse.json({ error: "not found" }, { status: 404 });
+    if (!profile?.email) {
+      return NextResponse.json({ error: "not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ email: profile.email });
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to resolve identifier" }, { status: 500 });
   }
-
-  return NextResponse.json({ email: data.email });
 }
 

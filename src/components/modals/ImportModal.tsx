@@ -18,7 +18,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { supabaseHelpers } from "@/integrations/supabase/client";
+import { db } from "@/integrations/database";
 import { useAppData } from "@/hooks/useAppData";
 
 interface ImportModalProps {
@@ -151,7 +151,7 @@ export default function ImportModal({
             status: (row['Status']?.toLowerCase() || 'active') as "active" | "inactive" | "suspended" | "retired",
           };
 
-          await supabaseHelpers.createPersonnel(personnelData);
+          await db.createPersonnel(personnelData);
           results.success++;
         } catch (error: any) {
           results.errors.push(`Row ${i + 2}: ${error.message}`);

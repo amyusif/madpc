@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut as fbSignOut, User as FbUser } from "firebase/auth";
 import { getDb, getFirebaseApp } from "@/integrations/firebase/client";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 
 type Role = "district_commander" | "unit_supervisor";
 
@@ -25,6 +25,7 @@ interface AuthContextType {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  updateProfile: (updates: Partial<Omit<Profile, "id" | "created_at">>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -77,6 +78,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateProfile = async (updates: Partial<Omit<Profile, "id" | "created_at">>) => {
+    if (!user?.id) {
+      throw new Error("No user authenticated");
+    }
+
+    try {
+      const db = getDb();
+      const profileRef = doc(db, "profiles", user.id);
+      
+      const updateData = {
+        ...updates,
+        updated_at: new Date().toISOString(),
+      };
+
+      await updateDoc(profileRef, updateData);
+      
+      // Update local state
+      setProfile(prev => prev ? { ...prev, ...updateData } : null);
+    } catch (error) {
+      console.error("Profile update error:", error);
+      throw new Error("Failed to update profile");
+    }
+  };
+
   const signIn = async (email: string, password: string) => {
     setLoading(true);
     try {
@@ -110,7 +135,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const value: AuthContextType = { user, profile, session: null, loading, signIn, signOut };
+  const value: AuthContextType = { user, profile, session: null, loading, signIn, signOut, updateProfile };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

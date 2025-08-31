@@ -1,6 +1,6 @@
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, orderBy } from "firebase/firestore";
 import { getDb } from "./client";
-import type { Personnel, Case, Duty } from "@/integrations/supabase/client";
+import type { Personnel, Case, Duty } from "@/integrations/database";
 
 const PERSONNEL = "personnel";
 const CASES = "cases";

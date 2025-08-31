@@ -33,7 +33,7 @@ import {
 } from "lucide-react";
 import { useAppData } from "@/hooks/useAppData";
 import { useToast } from "@/hooks/use-toast";
-import { supabaseHelpers } from "@/integrations/supabase/client";
+import { db } from "@/integrations/database";
 import ViewPersonnelModal from "@/components/modals/ViewPersonnelModal";
 import EditPersonnelModal from "@/components/modals/EditPersonnelModal";
 import UpdatePersonnelStatusModal from "@/components/modals/UpdatePersonnelStatusModal";
@@ -45,7 +45,7 @@ import PersonnelFilters, {
 } from "@/components/PersonnelFilters";
 import BulkOperations from "@/components/BulkOperations";
 import { PersonnelRefreshButton } from "@/components/RefreshIndicator";
-import type { Personnel } from "@/integrations/supabase/client";
+import type { Personnel } from "@/integrations/database";
 
 interface PersonnelListProps {
   onAddPersonnel: () => void;
@@ -206,7 +206,7 @@ const [composeOpen, setComposeOpen] = useState(false);
     try {
       setIsDeleting(true);
 
-      await supabaseHelpers.deletePersonnel(personnelToDelete.id);
+      await db.deletePersonnel(personnelToDelete.id);
 
       toast({
         title: "✅ Personnel Deleted Successfully!",

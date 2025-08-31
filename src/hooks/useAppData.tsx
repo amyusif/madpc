@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { supabaseHelpers } from "@/integrations/supabase/client";
-import type { Personnel, Case, Duty } from "@/integrations/supabase/client";
+import { db } from "@/integrations/database";
+import type { Personnel, Case, Duty } from "@/integrations/database";
 import { useAuth } from "./useAuth";
 
 interface AppDataContextType {
@@ -34,7 +34,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const fetchPersonnel = async () => {
     try {
       console.log("Fetching personnel from database...");
-      const data = await supabaseHelpers.getPersonnel();
+      const data = await db.getPersonnel();
       console.log(`Fetched ${data.length} personnel records`);
       setPersonnel(data);
     } catch (error: any) {
@@ -45,7 +45,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
   const fetchCases = async () => {
     try {
-      const data = await supabaseHelpers.getCases();
+      const data = await db.getCases();
       setCases(data);
     } catch (error: any) {
       console.error("Error fetching cases:", error);
@@ -55,7 +55,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
   const fetchDuties = async () => {
     try {
-      const data = await supabaseHelpers.getDuties();
+      const data = await db.getDuties();
       setDuties(data || []);
     } catch (error: any) {
       console.error("Error fetching duties:", error);

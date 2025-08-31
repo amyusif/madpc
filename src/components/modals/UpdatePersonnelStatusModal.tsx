@@ -5,8 +5,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { supabaseHelpers } from "@/integrations/supabase/client";
-import type { Personnel } from "@/integrations/supabase/client";
+import { db } from "@/integrations/database";
+import type { Personnel } from "@/integrations/database";
 
 interface UpdatePersonnelStatusModalProps {
   open: boolean;
@@ -24,7 +24,7 @@ export default function UpdatePersonnelStatusModal({ open, onOpenChange, personn
     if (!personnel) return;
     setLoading(true);
     try {
-      await supabaseHelpers.updatePersonnel(personnel.id, {
+      await db.updatePersonnel(personnel.id, {
         status: status as "active" | "inactive" | "suspended" | "retired"
       });
       toast({ title: "✅ Status Updated", description: `${personnel.first_name} ${personnel.last_name} is now ${status}.` });

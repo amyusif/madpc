@@ -39,10 +39,10 @@ import {
   Mails,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { supabaseHelpers } from "@/integrations/supabase/client";
+import { db } from "@/integrations/database";
 import { useAutoRefresh } from "@/hooks/useRefresh";
 import { exportToCSV, exportToExcel, exportToPDF } from "@/utils/exportUtils";
-import type { Personnel } from "@/integrations/supabase/client";
+import type { Personnel } from "@/integrations/database";
 
 interface BulkOperationsProps {
   selectedPersonnel: Personnel[];
@@ -88,7 +88,7 @@ export default function BulkOperations({
       // Delete all selected personnel
       await Promise.all(
         selectedPersonnel.map((person) =>
-          supabaseHelpers.deletePersonnel(person.id)
+          db.deletePersonnel(person.id)
         )
       );
 
@@ -126,7 +126,7 @@ export default function BulkOperations({
       // Update status for all selected personnel
       await Promise.all(
         selectedPersonnel.map((person) =>
-          supabaseHelpers.updatePersonnel(person.id, {
+          db.updatePersonnel(person.id, {
             status: newStatus as
               | "active"
               | "inactive"

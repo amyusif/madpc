@@ -18,7 +18,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useAppData } from "@/hooks/useAppData";
 import { useToast } from "@/hooks/use-toast";
-import { supabaseHelpers } from "@/integrations/supabase/client";
+import { db } from "@/integrations/database";
 import { X, Loader2, Calendar } from "lucide-react";
 
 // Force recompilation
@@ -84,9 +84,9 @@ export function AssignDutyModal({
         notes: `Assigned to ${selectedPersonnel.first_name} ${selectedPersonnel.last_name} (${selectedPersonnel.badge_number})`,
       };
 
-      // Insert duty into Supabase
-      console.log("Attempting to save duty to Supabase:", dutyData);
-      const createdDuty = await supabaseHelpers.createDuty(dutyData);
+      // Insert duty into Firebase
+      console.log("Attempting to save duty to Firebase:", dutyData);
+      const createdDuty = await db.createDuty(dutyData);
       console.log("Duty saved successfully with ID:", createdDuty.id);
       toast({
         title: "✅ Duty Assigned Successfully!",

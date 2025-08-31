@@ -22,9 +22,9 @@ import {
 import { Plus, Search, Calendar, User, Clock, MapPin, MoreHorizontal, Edit, Trash2, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { useAppData } from "@/hooks/useAppData";
 import { useToast } from "@/hooks/use-toast";
-import { supabaseHelpers } from "@/integrations/supabase/client";
+import { db } from "@/integrations/database";
 import { AssignDutyModal } from "@/components/modals/AssignDutyModal";
-import type { Duty } from "@/integrations/supabase/client";
+import type { Duty } from "@/integrations/database";
 
 export default function Duties() {
   const { duties, personnel, refreshDuties, loading } = useAppData();
@@ -89,7 +89,7 @@ export default function Duties() {
     if (!dutyToDelete) return;
     setIsDeleting(true);
     try {
-      await supabaseHelpers.deleteDuty(dutyToDelete.id);
+      await db.deleteDuty(dutyToDelete.id);
       toast({
         title: "✅ Duty Deleted",
         description: `Duty "${dutyToDelete.duty_type}" has been deleted.`,
@@ -110,7 +110,7 @@ export default function Duties() {
 
   const handleStatusUpdate = async (duty: Duty, newStatus: string) => {
     try {
-      await supabaseHelpers.updateDuty(duty.id, { status: newStatus as any });
+      await db.updateDuty(duty.id, { status: newStatus as any });
       toast({
         title: "✅ Status Updated",
         description: `Duty status changed to ${newStatus.replace("_", " ")}`,

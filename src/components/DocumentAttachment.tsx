@@ -191,30 +191,15 @@ export function DocumentAttachment({
     }
   };
 
-  const uploadOptions = {
-    bucket: STORAGE_BUCKETS.DOCUMENTS,
-    folder: `${entityType}_${entityId}`,
-    generateUniqueName: true,
-    maxSize: FILE_CONFIGS.DOCUMENTS.maxSize,
-    allowedTypes: FILE_CONFIGS.DOCUMENTS.allowedTypes,
-  };
-
-  const canUploadMore = attachments.length < maxFiles;
-
   return (
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Paperclip className="w-5 h-5" />
-              {title}
-            </CardTitle>
-            <CardDescription>
-              {description} ({attachments.length}/{maxFiles})
-            </CardDescription>
+            <CardTitle className="text-lg">{title}</CardTitle>
+            <CardDescription>{description}</CardDescription>
           </div>
-          {!readonly && canUploadMore && (
+          {!readonly && attachments.length < maxFiles && (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button size="sm">
@@ -229,7 +214,7 @@ export function DocumentAttachment({
                 
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="upload-name">Document Name</Label>
+                    <Label htmlFor="upload-name">Document Name (Optional)</Label>
                     <Input
                       id="upload-name"
                       value={uploadName}
@@ -250,7 +235,8 @@ export function DocumentAttachment({
                   </div>
                   
                   <FileUpload
-                    options={uploadOptions}
+                    bucket={STORAGE_BUCKETS.DOCUMENTS}
+                    folder={`${entityType}_${entityId}`}
                     config={FILE_CONFIGS.DOCUMENTS}
                     onUploadComplete={handleUploadComplete}
                     onError={(error) => {

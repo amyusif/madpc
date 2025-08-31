@@ -16,11 +16,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { supabaseHelpers } from "@/integrations/supabase/client";
+import { db } from "@/integrations/database";
 import { useAppData } from "@/hooks/useAppData";
 import { useAutoRefresh } from "@/hooks/useRefresh";
 import { Loader2, Edit, X } from "lucide-react";
-import type { Personnel } from "@/integrations/supabase/client";
+import type { Personnel } from "@/integrations/database";
 
 interface EditPersonnelModalProps {
   open: boolean;
@@ -193,9 +193,9 @@ export default function EditPersonnelModal({
         updated_at: new Date().toISOString(),
       };
 
-      // Update personnel in Supabase
+      // Update personnel in Firebase
       console.log("Attempting to update personnel:", personnelData);
-      const updatedPersonnel = await supabaseHelpers.updatePersonnel(
+      const updatedPersonnel = await db.updatePersonnel(
         personnel.id,
         personnelData
       );

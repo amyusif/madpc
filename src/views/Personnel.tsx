@@ -5,7 +5,7 @@ import { PersonnelRefreshButton } from "@/components/RefreshIndicator";
 import { CSVImportExport } from "@/components/CSVImportExport";
 import { useAppData } from "@/hooks/useAppData";
 import { useToast } from "@/hooks/use-toast";
-import { supabaseHelpers } from "@/integrations/supabase/client";
+import { db } from "@/integrations/database";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 
@@ -61,7 +61,7 @@ export default function Personnel() {
             | "retired",
         };
 
-        await supabaseHelpers.createPersonnel(personnelData);
+        const newPersonnel = await db.createPersonnel(personnelData);
       }
 
       await refreshPersonnel();

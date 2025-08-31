@@ -18,7 +18,7 @@ import {
   Baby,
   AlertCircle,
 } from "lucide-react";
-import type { Personnel } from "@/integrations/supabase/client";
+import type { Personnel } from "@/integrations/database";
 
 interface ViewPersonnelModalProps {
   open: boolean;

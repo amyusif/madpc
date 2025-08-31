@@ -9,9 +9,9 @@ import {
   X,
   File,
   Image,
-  FileText,
   Video,
   Music,
+  FileText,
   AlertCircle,
   CheckCircle,
   Loader2,
@@ -21,7 +21,6 @@ import {
   uploadFile,
   validateFile,
   FILE_CONFIGS,
-  type FileUploadOptions,
   type FileUploadResult,
 } from "@/utils/fileStorage";
 
@@ -30,7 +29,9 @@ interface FileUploadProps {
   onUploadStart?: (file: File) => void;
   onUploadProgress?: (progress: number) => void;
   onError?: (error: string) => void;
-  options: FileUploadOptions;
+  bucket: string;
+  folder?: string;
+  fileName?: string;
   config?: typeof FILE_CONFIGS[keyof typeof FILE_CONFIGS];
   multiple?: boolean;
   disabled?: boolean;
@@ -53,7 +54,9 @@ export function FileUpload({
   onUploadStart,
   onUploadProgress,
   onError,
-  options,
+  bucket,
+  folder = "",
+  fileName,
   config,
   multiple = false,
   disabled = false,
@@ -116,7 +119,7 @@ export function FileUpload({
         }));
       }, 200);
 
-      const result = await uploadFile(file, options);
+      const result = await uploadFile(file, bucket, folder, fileName);
 
       clearInterval(progressInterval);
 
@@ -145,7 +148,7 @@ export function FileUpload({
       ));
       onError?.(errorMessage);
     }
-  }, [config, options, onUploadStart, onUploadProgress, onUploadComplete, onError]);
+  }, [bucket, folder, fileName, config, onUploadStart, onUploadProgress, onUploadComplete, onError]);
 
   const handleFileSelect = useCallback((files: FileList | null) => {
     if (!files || disabled) return;

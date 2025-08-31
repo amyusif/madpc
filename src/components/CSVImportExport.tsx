@@ -258,24 +258,16 @@ export function CSVImportExport({
 
   const downloadTemplate = () => {
     if (!importTemplate) return;
-
+    
     const blob = new Blob([importTemplate], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `${entityType}_import_template.csv`;
+    link.download = `${entityType}_template.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     window.URL.revokeObjectURL(url);
-  };
-
-  const uploadOptions = {
-    bucket: STORAGE_BUCKETS.IMPORTS,
-    folder: entityType,
-    generateUniqueName: true,
-    maxSize: FILE_CONFIGS.SPREADSHEETS.maxSize,
-    allowedTypes: FILE_CONFIGS.SPREADSHEETS.allowedTypes,
   };
 
   return (
@@ -320,7 +312,8 @@ export function CSVImportExport({
 
             {!isProcessing && !importResult && (
               <FileUpload
-                options={uploadOptions}
+                bucket={STORAGE_BUCKETS.IMPORTS}
+                folder={entityType}
                 config={FILE_CONFIGS.SPREADSHEETS}
                 onUploadComplete={handleImportComplete}
                 onError={(error) => {

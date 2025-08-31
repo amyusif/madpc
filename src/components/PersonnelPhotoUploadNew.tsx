@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Camera, Upload, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { supabaseHelpers } from "@/integrations/supabase/client";
+import { db } from "@/integrations/database";
 
 interface PersonnelPhotoUploadProps {
   personnelId: string;
@@ -79,7 +79,7 @@ export function PersonnelPhotoUploadNew({
       }
 
       // Update personnel record with new photo URL
-      await supabaseHelpers.updatePersonnel(personnelId, {
+      await db.updatePersonnel(personnelId, {
         photo_url: uploadedFile.url,
       });
 
@@ -133,7 +133,7 @@ export function PersonnelPhotoUploadNew({
       }
 
       // Update personnel record to remove photo URL
-      await supabaseHelpers.updatePersonnel(personnelId, {
+      await db.updatePersonnel(personnelId, {
         photo_url: null,
       });
 
@@ -208,11 +208,8 @@ export function PersonnelPhotoUploadNew({
               </h4>
               
               <FileUpload
-                options={{
-                  bucket: STORAGE_BUCKETS.PERSONNEL_PHOTOS,
-                  folder: `personnel/${personnelId}`,
-                  generateUniqueName: true,
-                }}
+                bucket={STORAGE_BUCKETS.PERSONNEL_PHOTOS}
+                folder={`personnel/${personnelId}`}
                 config={FILE_CONFIGS.IMAGES}
                 onUploadComplete={handleUploadComplete}
                 onError={handleUploadError}

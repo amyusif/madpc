@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useCallback } from "react";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "./useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { sessionUtils } from "@/integrations/supabase/client";
 
 interface UseInactivityTimeoutProps {
   timeoutMinutes?: number;
@@ -37,20 +36,9 @@ export function useInactivityTimeout({
       console.log("Inactivity timeout - logging out user");
 
       // Clear any stale session data and cache
-      sessionUtils.clearStaleSession();
-
-      // Clear sessionStorage and cache to prevent persistence
       if (typeof window !== "undefined") {
+        localStorage.clear();
         sessionStorage.clear();
-
-        // Clear browser cache
-        if ("caches" in window) {
-          caches.keys().then((names) => {
-            names.forEach((name) => {
-              caches.delete(name);
-            });
-          });
-        }
       }
 
       await signOut();
@@ -64,10 +52,9 @@ export function useInactivityTimeout({
     } catch (error) {
       console.error("Error during auto logout:", error);
       // Force clear session and cache even if signOut fails
-      sessionUtils.clearStaleSession();
       if (typeof window !== "undefined") {
-        sessionStorage.clear();
         localStorage.clear();
+        sessionStorage.clear();
       }
       window.location.href = "/";
     }

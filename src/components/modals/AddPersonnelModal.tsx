@@ -17,7 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { supabaseHelpers } from "@/integrations/supabase/client";
+import { db } from "@/integrations/database";
 import { useAppData } from "@/hooks/useAppData";
 import { useAutoRefresh } from "@/hooks/useRefresh";
 import { FileUpload } from "@/components/ui/file-upload";
@@ -91,7 +91,7 @@ export default function AddPersonnelModal({
     try {
       // Validate required fields
       if (!formData.badgeNumber.trim())
-        throw new Error("Badge number is required");
+        throw new Error("Service number is required");
       if (!formData.firstName.trim()) throw new Error("First name is required");
       if (!formData.lastName.trim()) throw new Error("Last name is required");
       if (!formData.email.trim()) throw new Error("Email is required");
@@ -124,9 +124,9 @@ export default function AddPersonnelModal({
         photo_url: selectedImage || null,
       };
 
-      // Insert personnel into Supabase
-      console.log("Attempting to save to Supabase:", personnelData);
-      const newPersonnel = await supabaseHelpers.createPersonnel(personnelData);
+      // Insert personnel into Firebase
+      console.log("Attempting to save to Firebase:", personnelData);
+      const newPersonnel = await db.createPersonnel(personnelData);
       console.log("Personnel saved successfully with ID:", newPersonnel.id);
       toast({
         title: "✅ Personnel Added Successfully!",
@@ -240,11 +240,8 @@ export default function AddPersonnelModal({
               {/* Upload Section */}
               <div className="flex-1">
                 <FileUpload
-                  options={{
-                    bucket: STORAGE_BUCKETS.PERSONNEL_PHOTOS,
-                    folder: `personnel/${formData.badgeNumber || 'unknown'}`,
-                    generateUniqueName: true,
-                  }}
+                  bucket={STORAGE_BUCKETS.PERSONNEL_PHOTOS}
+                  folder={`personnel/${formData.badgeNumber || 'unknown'}`}
                   config={FILE_CONFIGS.IMAGES}
                   onUploadComplete={handleImageUpload}
                   onError={handleImageError}
@@ -264,7 +261,7 @@ export default function AddPersonnelModal({
             {/* Left Column */}
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="badgeNumber">Badge Number</Label>
+                <Label htmlFor="badgeNumber">Service Number</Label>
                 <Input
                   id="badgeNumber"
                   value={formData.badgeNumber}

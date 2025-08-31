@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getResend, EMAIL_FROM } from "@/lib/email/resend";
+import { db } from "@/integrations/database";
 
 const useFirestore = () => (process.env.NEXT_PUBLIC_USE_FIRESTORE || "").toString() === "true";
 
@@ -7,19 +8,19 @@ async function getPersonnelData(personnelIds: string[]) {
   if (useFirestore()) {
     const { getDb } = await import("@/integrations/firebase/client");
     const { collection, query, where, getDocs } = await import("firebase/firestore");
-    const db = getDb();
-    const q = query(collection(db, "personnel"), where("__name__", "in", personnelIds));
+    const dbClient = getDb();
+    const q = query(collection(dbClient, "personnel"), where("__name__", "in", personnelIds));
     const snap = await getDocs(q);
     return snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
   } else {
-    const { getServerSupabase } = await import("@/integrations/supabase/server");
-    const supabase = getServerSupabase();
-    const { data, error } = await supabase
-      .from("personnel")
-      .select("id, email, first_name, last_name, phone")
-      .in("id", personnelIds);
-    if (error) throw new Error(error.message || "Failed to fetch personnel");
-    return data || [];
+    // Use unified database integration (Firebase backend)
+    try {
+      const all = await db.getPersonnel();
+      // Filter to requested ids
+      return (all || []).filter((p: any) => personnelIds.includes(String(p.id)));
+    } catch (e) {
+      throw new Error("Failed to fetch personnel from database: " + (e as any)?.message || String(e));
+    }
   }
 }
 
@@ -63,12 +64,14 @@ export async function POST(req: NextRequest) {
 
     // Fetch personnel data
     const data = await getPersonnelData(personnelIds);
-    const recipients = data
+    type Recipient = { id: string; email?: string; phone?: string; name?: string };
+
+    const recipients: Recipient[] = data
       .map((p: any) => ({
-        id: p.id,
+        id: String(p.id),
         email: (p.email || "").trim(),
         phone: (p.phone || "").trim(),
-        name: `${p.first_name} ${p.last_name}`
+        name: `${p.first_name || ''} ${p.last_name || ''}`.trim()
       }))
       .filter((r) => (channels.includes("email") && r.email) || (channels.includes("sms") && r.phone));
 
@@ -89,9 +92,9 @@ export async function POST(req: NextRequest) {
       const html = (await import("@/lib/email/templates/notification")).buildNotificationHtml({ subject, message });
 
       emailResults = await Promise.all(
-        recipients.filter(r => r.email).map(async (r) => {
+        recipients.filter((r) => r.email).map(async (r: Recipient) => {
           try {
-            await resend.emails.send({ from, to: r.email, subject, text: message, html });
+            await resend.emails.send({ from, to: r.email!, subject, text: message, html });
             await updateRecipientStatus(messageId, r.id, "email", "sent");
             return true;
           } catch (err: any) {
@@ -105,9 +108,9 @@ export async function POST(req: NextRequest) {
     // Send SMS if requested
     if (channels.includes("sms")) {
       smsResults = await Promise.all(
-        recipients.filter(r => r.phone).map(async (r) => {
+        recipients.filter((r) => r.phone).map(async (r: Recipient) => {
           try {
-            await sendSMS(r.phone, `${subject}\n\n${message}`.trim(), scheduleAt);
+            await sendSMS(r.phone!, `${subject}\n\n${message}`.trim(), scheduleAt);
             await updateRecipientStatus(messageId, r.id, "sms", "sent");
             return true;
           } catch (err: any) {
@@ -154,70 +157,25 @@ async function updateRecipientStatus(messageId: string | null, personnelId: stri
 }
 
 async function sendSMS(phone: string, message: string, scheduleAt?: string): Promise<void> {
-  const smsProvider = (process.env.SMS_PROVIDER || "none").toLowerCase();
+  // Use UelloSend helper functions for all SMS sends
+  const { sendSingleSMS, sendBulkSMS, formatPhoneNumber, validatePhoneNumber } = await import("@/utils/smsService");
 
-  // Arkesel SMS provider (recommended for Ghana)
-  if (smsProvider === "arkesel") {
-    const apiKey = process.env.ARKESEL_API_KEY;
-    const senderId = process.env.ARKESEL_SENDER_ID;
-    if (!apiKey || !senderId) throw new Error("Arkesel SMS not configured: set ARKESEL_API_KEY and ARKESEL_SENDER_ID");
+  // Format phone number first
+  const formatted = formatPhoneNumber(phone);
+  
+  // Validate the formatted number
+  if (!validatePhoneNumber(formatted)) {
+    throw new Error(`Invalid phone number: ${phone} (formatted: ${formatted})`);
+  }
 
-    const { formatPhoneForSMS } = await import("@/utils/phoneUtils");
-    const normalized = formatPhoneForSMS(phone); // +23324...
-    const recipient = normalized.replace(/\D/g, ""); // 23324...
-
-    // Use Arkesel simple GET API for single or scheduled SMS
-    const base = "https://sms.arkesel.com/sms/api";
-    const params = new URLSearchParams({
-      action: "send-sms",
-      api_key: apiKey,
-      to: recipient,
-      from: senderId,
-      sms: message,
-    });
-    if (scheduleAt) params.set("schedule", scheduleAt);
-
-    const url = `${base}?${params.toString()}`;
-
-    console.log("[SMS] Provider=arkesel, url=", url.replace(apiKey, "***"));
-
-    const res = await fetch(url, { method: "GET" });
-    const text = await res.text();
-    console.log("[SMS] Arkesel response status=", res.status);
-    console.log("[SMS] Arkesel response body=", text);
-
-    if (!res.ok) throw new Error(`Arkesel HTTP ${res.status}: ${text}`);
-
-    // The legacy API sometimes returns plain text like "1000|Message Sent" or JSON
-    const lower = text.toLowerCase();
-    const ok = lower.includes("success") || lower.includes("sent") || lower.startsWith("1000");
-    if (!ok) throw new Error(`Arkesel send failed: ${text}`);
-
+  // If scheduleAt is provided, use campaign (bulk) endpoint to schedule for this single recipient
+  if (scheduleAt) {
+    const res = await sendBulkSMS([formatted], message);
+    if (!res.success) throw new Error(res.error || "Failed to schedule SMS");
     return;
   }
 
-  // Legacy Twilio branch (kept for compatibility)
-  if (smsProvider === "twilio") {
-    const twilio = require("twilio");
-    const client = twilio(
-      process.env.TWILIO_ACCOUNT_SID,
-      process.env.TWILIO_AUTH_TOKEN
-    );
-
-    const { formatPhoneForSMS } = await import("@/utils/phoneUtils");
-    const formattedPhone = formatPhoneForSMS(phone);
-    console.log("[SMS] Provider=twilio, to=", formattedPhone);
-
-    const result = await client.messages.create({
-      body: message,
-      from: process.env.TWILIO_PHONE_NUMBER,
-      to: formattedPhone,
-    });
-    console.log("[SMS] Twilio message sid=", result?.sid);
-    return;
-  }
-
-  // Default: simulate/send nothing
-  console.log(`📱 SMS would be sent to ${phone}: ${message.slice(0, 120)}`);
+  const res = await sendSingleSMS(formatted, message);
+  if (!res.success) throw new Error(res.error || "Failed to send SMS");
 }
 

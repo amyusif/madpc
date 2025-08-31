@@ -44,7 +44,7 @@ import { CaseEvidenceUpload } from "@/components/CaseEvidenceUpload";
 import { CSVImportExport } from "@/components/CSVImportExport";
 import { useAppData } from "@/hooks/useAppData";
 import { useToast } from "@/hooks/use-toast";
-import { supabaseHelpers } from "@/integrations/supabase/client";
+import { db } from "@/integrations/database";
 export default function Cases() {
   const { cases, refreshCases, loading } = useAppData();
   const [showAddCaseModal, setShowAddCaseModal] = useState(false);
@@ -100,7 +100,7 @@ export default function Cases() {
           reported_by: row.reported_by || row["Reported By"] || "",
         };
 
-        await supabaseHelpers.createCase(caseData);
+        const newCase = await db.createCase(caseData);
       }
 
       await refreshCases();

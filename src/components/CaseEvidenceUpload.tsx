@@ -51,6 +51,7 @@ interface EvidenceFile {
   case_id: string;
   file_name: string;
   file_url: string;
+  file_path: string;
   file_type: string;
   file_size: number;
   uploaded_by: string;
@@ -95,27 +96,31 @@ export function CaseEvidenceUpload({
   const loadEvidenceFiles = async () => {
     setIsLoading(true);
     try {
-      // In a real implementation, you would fetch from your database
-      // For now, we'll simulate loading files
-      const { files } = await listFiles(
+      const result = await listFiles(
         STORAGE_BUCKETS.CASE_EVIDENCE,
         `case_${caseNumber}`
       );
       
-      // Convert storage files to evidence files format
-      const evidenceFiles: EvidenceFile[] = files.map((file, index) => ({
-        id: `evidence_${index}`,
-        case_id: caseId,
-        file_name: file.name,
-        file_url: `${STORAGE_BUCKETS.CASE_EVIDENCE}/case_${caseNumber}/${file.name}`,
-        file_type: file.metadata?.mimetype || "application/octet-stream",
-        file_size: file.metadata?.size || 0,
-        uploaded_by: "Current User",
-        uploaded_at: file.created_at || new Date().toISOString(),
-      }));
+      if (result.success) {
+        // Convert storage files to evidence files format
+        const evidenceFiles: EvidenceFile[] = result.files.map((file, index) => ({
+          id: `evidence_${index}`,
+          case_id: caseId,
+          file_name: file.metadata?.customMetadata?.originalName || file.name,
+          file_url: file.url,
+          file_path: file.path,
+          file_type: file.type,
+          file_size: file.size,
+          uploaded_by: "Current User", // TODO: Get actual user info
+          uploaded_at: file.created_at || new Date().toISOString(),
+        }));
 
-      setEvidenceFiles(evidenceFiles);
+        setEvidenceFiles(evidenceFiles);
+      } else {
+        throw new Error(result.error || "Failed to load files");
+      }
     } catch (error) {
+      console.error("Failed to load evidence files:", error);
       toast({
         title: "Load Failed",
         description: "Failed to load evidence files",
@@ -141,15 +146,16 @@ export function CaseEvidenceUpload({
     }
 
     try {
-      // In a real implementation, you would save evidence metadata to database
+      // Create new evidence record
       const newEvidence: EvidenceFile = {
         id: `evidence_${Date.now()}`,
         case_id: caseId,
         file_name: result.path?.split("/").pop() || "unknown",
         file_url: result.url,
+        file_path: result.path || "",
         file_type: result.type || "application/octet-stream",
         file_size: result.size || 0,
-        uploaded_by: "Current User",
+        uploaded_by: "Current User", // TODO: Get actual user info
         uploaded_at: new Date().toISOString(),
       };
 
@@ -163,6 +169,7 @@ export function CaseEvidenceUpload({
 
       onEvidenceUpdate?.();
     } catch (error) {
+      console.error("Failed to save evidence metadata:", error);
       toast({
         title: "Save Failed",
         description: "Failed to save evidence metadata",
@@ -173,13 +180,14 @@ export function CaseEvidenceUpload({
 
   const handleDeleteEvidence = async (evidence: EvidenceFile) => {
     try {
-      // Extract file path from URL
-      const url = new URL(evidence.file_url);
-      const pathParts = url.pathname.split("/");
-      const filePath = pathParts.slice(-2).join("/");
+      // Delete file from Firebase Storage
+      const deleteResult = await deleteFile(STORAGE_BUCKETS.CASE_EVIDENCE, evidence.file_path);
+      
+      if (!deleteResult.success) {
+        throw new Error(deleteResult.error || "Failed to delete file");
+      }
 
-      await deleteFile(STORAGE_BUCKETS.CASE_EVIDENCE, filePath);
-
+      // Remove from local state
       setEvidenceFiles(prev => prev.filter(f => f.id !== evidence.id));
 
       toast({
@@ -190,6 +198,7 @@ export function CaseEvidenceUpload({
 
       onEvidenceUpdate?.();
     } catch (error) {
+      console.error("Failed to delete evidence:", error);
       toast({
         title: "Delete Failed",
         description: "Failed to delete evidence file",
@@ -200,13 +209,10 @@ export function CaseEvidenceUpload({
 
   const handleDownloadEvidence = async (evidence: EvidenceFile) => {
     try {
-      const url = new URL(evidence.file_url);
-      const pathParts = url.pathname.split("/");
-      const filePath = pathParts.slice(-2).join("/");
-
+      // Get signed URL for download
       const { url: signedUrl, error } = await getSignedUrl(
         STORAGE_BUCKETS.CASE_EVIDENCE,
-        filePath
+        evidence.file_path
       );
 
       if (error || !signedUrl) {
@@ -221,20 +227,13 @@ export function CaseEvidenceUpload({
       link.click();
       document.body.removeChild(link);
     } catch (error) {
+      console.error("Failed to download evidence:", error);
       toast({
         title: "Download Failed",
         description: "Failed to download evidence file",
         variant: "destructive",
       });
     }
-  };
-
-  const uploadOptions = {
-    bucket: STORAGE_BUCKETS.CASE_EVIDENCE,
-    folder: `case_${caseNumber}`,
-    generateUniqueName: true,
-    maxSize: FILE_CONFIGS.EVIDENCE.maxSize,
-    allowedTypes: FILE_CONFIGS.EVIDENCE.allowedTypes,
   };
 
   return (
@@ -260,7 +259,8 @@ export function CaseEvidenceUpload({
                   <DialogTitle>Upload Evidence</DialogTitle>
                 </DialogHeader>
                 <FileUpload
-                  options={uploadOptions}
+                  bucket={STORAGE_BUCKETS.CASE_EVIDENCE}
+                  folder={`case_${caseNumber}`}
                   config={FILE_CONFIGS.EVIDENCE}
                   onUploadComplete={handleUploadComplete}
                   onError={(error) => {
@@ -280,7 +280,12 @@ export function CaseEvidenceUpload({
       </CardHeader>
 
       <CardContent>
-        {evidenceFiles.length === 0 ? (
+        {isLoading ? (
+          <div className="text-center py-8 text-gray-500">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-2"></div>
+            <p>Loading evidence files...</p>
+          </div>
+        ) : evidenceFiles.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             <File className="w-12 h-12 mx-auto mb-2 opacity-50" />
             <p>No evidence files uploaded</p>

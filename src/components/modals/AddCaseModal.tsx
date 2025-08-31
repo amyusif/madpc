@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { supabaseHelpers } from "@/integrations/supabase/client";
+import { db } from "@/integrations/database";
 import { useToast } from "@/hooks/use-toast";
 import { useAppData } from "@/hooks/useAppData";
 import { useAutoRefresh } from "@/hooks/useRefresh";
@@ -80,9 +80,9 @@ export default function AddCaseModal({
         description: `Reported on ${formData.reportedDate}`,
       };
 
-      // Insert case into Supabase
-      console.log("Attempting to save to Supabase:", newCase);
-      const createdCase = await supabaseHelpers.createCase(newCase);
+      // Insert case into Firebase
+      console.log("Attempting to save to Firebase:", newCase);
+      const createdCase = await db.createCase(newCase);
       console.log("Case saved successfully with ID:", createdCase.id);
       toast({
         title: "✅ Case Created Successfully!",
