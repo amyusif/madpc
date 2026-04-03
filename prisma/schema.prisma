@@ -1,0 +1,171 @@
+// Prisma schema for MADPC - Neon (PostgreSQL)
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PersonnelStatus {
+  active
+  inactive
+  suspended
+  retired
+}
+
+enum CasePriority {
+  low
+  medium
+  high
+  urgent
+}
+
+enum CaseStatus {
+  open
+  in_progress
+  closed
+  archived
+}
+
+enum DutyStatus {
+  scheduled
+  assigned
+  in_progress
+  completed
+  cancelled
+}
+
+enum UserRole {
+  admin
+  manager
+  supervisor
+  user
+}
+
+model Personnel {
+  id                 String          @id @default(cuid())
+  badge_number       String          @unique
+  first_name         String
+  last_name          String
+  email              String          @unique
+  phone              String?
+  rank               String
+  unit               String
+  date_joined        String
+  emergency_contacts String[]
+  marital_status     String
+  spouse             String?
+  children_count     Int?
+  no_children        Boolean         @default(false)
+  status             PersonnelStatus @default(active)
+  photo_url          String?
+  password_hash      String?
+  created_at         DateTime        @default(now())
+  updated_at         DateTime        @updatedAt
+
+  duties              Duty[]
+  message_recipients  MessageRecipient[]
+  circular_recipients CircularRecipient[]
+}
+
+model Case {
+  id          String       @id @default(cuid())
+  case_number String       @unique
+  case_title  String
+  case_type   String
+  description String
+  priority    CasePriority @default(medium)
+  status      CaseStatus   @default(open)
+  assigned_to String?
+  reported_by String
+  created_at  DateTime     @default(now())
+  updated_at  DateTime     @updatedAt
+}
+
+model Duty {
+  id           String     @id @default(cuid())
+  personnel_id String
+  duty_type    String
+  description  String
+  location     String
+  start_time   String
+  end_time     String?
+  status       DutyStatus @default(scheduled)
+  notes        String?
+  created_at   DateTime   @default(now())
+  updated_at   DateTime   @updatedAt
+
+  personnel Personnel @relation(fields: [personnel_id], references: [id], onDelete: Cascade)
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  subject    String
+  body       String
+  created_at DateTime @default(now())
+
+  recipients MessageRecipient[]
+}
+
+model MessageRecipient {
+  id           String   @id @default(cuid())
+  message_id   String
+  personnel_id String
+  email        String   @default("")
+  phone        String   @default("")
+  status       String   @default("pending")
+  email_status String?
+  sms_status   String?
+  email_error  String?
+  sms_error    String?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  message   Message   @relation(fields: [message_id], references: [id], onDelete: Cascade)
+  personnel Personnel @relation(fields: [personnel_id], references: [id], onDelete: Cascade)
+}
+
+model Circular {
+  id              String   @id @default(cuid())
+  title           String
+  message         String
+  unit            String?
+  channels        String[]
+  recipient_count Int      @default(0)
+  status          String   @default("sent")
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+
+  recipients CircularRecipient[]
+}
+
+model CircularRecipient {
+  id           String   @id @default(cuid())
+  circular_id  String
+  personnel_id String
+  email_status String   @default("pending")
+  sms_status   String   @default("pending")
+  created_at   DateTime @default(now())
+
+  circular  Circular  @relation(fields: [circular_id], references: [id], onDelete: Cascade)
+  personnel Personnel @relation(fields: [personnel_id], references: [id], onDelete: Cascade)
+}
+
+/// User table for admin authentication
+model User {
+  id          String   @id @default(cuid())
+  userId      String   @unique @default(cuid())
+  fullName    String   @default("User")
+  username    String   @unique
+  email       String?  @unique
+  phone       String?
+  password    String
+  role        UserRole @default(user)
+  isActive    Boolean  @default(true)
+  lastLoginAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

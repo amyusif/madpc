@@ -1,52 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-
-const useFirestore = () => (process.env.NEXT_PUBLIC_USE_FIRESTORE || "").toString() === "true";
+import { prisma } from "@/lib/prisma";
 
 export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const resolvedParams = await params;
-    if (useFirestore()) {
-      const { getDb } = await import("@/integrations/firebase/client");
-      const { doc, getDoc, collection, query, where, getDocs } = await import("firebase/firestore");
-      const db = getDb();
-
-      // Get message
-      const msgDoc = await getDoc(doc(db, "messages", resolvedParams.id));
-      if (!msgDoc.exists()) {
-        return NextResponse.json({ error: "Message not found" }, { status: 404 });
-      }
-
-      // Get recipients
-      const recipientsQuery = query(
-        collection(db, "message_recipients"),
-        where("message_id", "==", resolvedParams.id)
-      );
-      const recipientsSnap = await getDocs(recipientsQuery);
-      const recipients = recipientsSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
-
-      const message = { id: msgDoc.id, ...msgDoc.data(), recipients };
-      return NextResponse.json({ message });
-    } else {
-      // Fallback to Firebase if not using Firestore flag
-      const { getDb } = await import("@/integrations/firebase/client");
-      const { doc, getDoc, collection, query, where, getDocs } = await import("firebase/firestore");
-      const db = getDb();
-
-      const msgDoc = await getDoc(doc(db, "messages", resolvedParams.id));
-      if (!msgDoc.exists()) {
-        return NextResponse.json({ error: "Message not found" }, { status: 404 });
-      }
-
-      const recipientsQuery = query(
-        collection(db, "message_recipients"),
-        where("message_id", "==", resolvedParams.id)
-      );
-      const recipientsSnap = await getDocs(recipientsQuery);
-      const recipients = recipientsSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
-
-      const message = { id: msgDoc.id, ...msgDoc.data(), recipients };
-      return NextResponse.json({ message });
+    const { id } = await params;
+    const message = await prisma.message.findUnique({
+      where: { id },
+      include: { recipients: true },
+    });
+    if (!message) {
+      return NextResponse.json({ error: "Message not found" }, { status: 404 });
     }
+    return NextResponse.json({ message });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || "Failed to fetch message" }, { status: 500 });
   }
@@ -54,45 +19,12 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
 
 export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const resolvedParams = await params;
-    if (useFirestore()) {
-      const { getDb } = await import("@/integrations/firebase/client");
-      const { doc, deleteDoc, collection, query, where, getDocs } = await import("firebase/firestore");
-      const db = getDb();
-
-      // Delete message recipients first
-      const recipientsQuery = query(
-        collection(db, "message_recipients"),
-        where("message_id", "==", resolvedParams.id)
-      );
-      const recipientsSnap = await getDocs(recipientsQuery);
-      const deletePromises = recipientsSnap.docs.map((d) => deleteDoc(d.ref));
-      await Promise.all(deletePromises);
-
-      // Delete the message
-      await deleteDoc(doc(db, "messages", resolvedParams.id));
-
-      return NextResponse.json({ success: true });
-    } else {
-      // Fallback to Firebase if not using Firestore flag
-      const { getDb } = await import("@/integrations/firebase/client");
-      const { doc, deleteDoc, collection, query, where, getDocs } = await import("firebase/firestore");
-      const db = getDb();
-
-      const recipientsQuery = query(
-        collection(db, "message_recipients"),
-        where("message_id", "==", resolvedParams.id)
-      );
-      const recipientsSnap = await getDocs(recipientsQuery);
-      const deletePromises = recipientsSnap.docs.map((d) => deleteDoc(d.ref));
-      await Promise.all(deletePromises);
-
-      await deleteDoc(doc(db, "messages", resolvedParams.id));
-      return NextResponse.json({ success: true });
-    }
+    const { id } = await params;
+    // Recipients are cascade-deleted via the Prisma schema relation
+    await prisma.message.delete({ where: { id } });
+    return NextResponse.json({ success: true });
   } catch (e: any) {
     console.error("Delete message error:", e);
     return NextResponse.json({ error: e?.message || "Failed to delete message" }, { status: 500 });
   }
 }
-

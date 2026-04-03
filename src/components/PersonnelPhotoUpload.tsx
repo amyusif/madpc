@@ -101,14 +101,10 @@ export function PersonnelPhotoUpload({
 
     setIsUploading(true);
     try {
-      // Delete photo from Firebase Storage
-      if (currentPhotoUrl.includes('firebasestorage.googleapis.com')) {
+      // Delete photo from storage if it exists
+      if (currentPhotoUrl) {
         try {
-          const urlParts = currentPhotoUrl.split('/o/')[1];
-          if (urlParts) {
-            const filePath = decodeURIComponent(urlParts.split('?')[0]);
-            await deleteFile(STORAGE_BUCKETS.PERSONNEL_PHOTOS, filePath);
-          }
+          await deleteFile(STORAGE_BUCKETS.PERSONNEL_PHOTOS, "");
         } catch (error) {
           console.warn('Failed to delete photo from storage:', error);
         }

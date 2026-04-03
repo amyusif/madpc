@@ -1,67 +1,51 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/integrations/database";
+import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email/email-service";
 
-const useFirestore = () =>
-  (process.env.NEXT_PUBLIC_USE_FIRESTORE || "").toString() === "true";
-
 async function getPersonnelData(personnelIds: string[]) {
-  if (useFirestore()) {
-    const { getDb } = await import("@/integrations/firebase/client");
-    const { collection, query, where, getDocs } = await import(
-      "firebase/firestore"
-    );
-    const dbClient = getDb();
-    const q = query(
-      collection(dbClient, "personnel"),
-      where("__name__", "in", personnelIds)
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
-  } else {
-    // Use unified database integration (Firebase backend)
-    try {
-      const all = await db.getPersonnel();
-      // Filter to requested ids
-      return (all || []).filter((p: any) =>
-        personnelIds.includes(String(p.id))
-      );
-    } catch (e) {
-      throw new Error(
-        "Failed to fetch personnel from database: " + (e as any)?.message ||
-          String(e)
-      );
-    }
-  }
+  const rows = await prisma.personnel.findMany({
+    where: { id: { in: personnelIds } },
+  });
+  return rows;
 }
 
-async function logMessage(subject: string, message: string, recipients: any[]) {
-  if (useFirestore()) {
-    const { getDb } = await import("@/integrations/firebase/client");
-    const { collection, addDoc, doc, setDoc } = await import(
-      "firebase/firestore"
-    );
-    const db = getDb();
-    const msgRef = await addDoc(collection(db, "messages"), {
+async function logMessage(subject: string, message: string, recipients: { id: string; email?: string; phone?: string }[]) {
+  const msg = await prisma.message.create({
+    data: {
       subject,
       body: message,
-      created_at: new Date().toISOString(),
+      recipients: {
+        create: recipients.map((r) => ({
+          personnel_id: r.id,
+          email: r.email ?? "",
+          phone: r.phone ?? "",
+          status: "pending",
+        })),
+      },
+    },
+  });
+  return msg.id;
+}
+
+async function updateRecipientStatus(
+  messageId: string | null,
+  personnelId: string,
+  channel: string,
+  status: string,
+  error?: string
+) {
+  if (!messageId) return;
+  try {
+    await prisma.messageRecipient.updateMany({
+      where: { message_id: messageId, personnel_id: personnelId },
+      data: {
+        [`${channel}_status`]: status,
+        [`${channel}_error`]: error ?? "",
+      },
     });
-    const messageId = msgRef.id;
-    // Log recipients
-    for (const r of recipients) {
-      await setDoc(doc(db, "message_recipients", `${messageId}_${r.id}`), {
-        message_id: messageId,
-        personnel_id: r.id,
-        email: r.email,
-        phone: r.phone || "",
-        status: "pending",
-        created_at: new Date().toISOString(),
-      });
-    }
-    return messageId;
+  } catch (e) {
+    console.warn("Failed to update recipient status:", e);
   }
-  return null; // Skip logging if not using Firestore
 }
 
 export async function POST(req: NextRequest) {
@@ -75,26 +59,15 @@ export async function POST(req: NextRequest) {
     } = await req.json();
 
     if (!Array.isArray(personnelIds) || personnelIds.length === 0) {
-      return NextResponse.json(
-        { error: "personnelIds is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "personnelIds is required" }, { status: 400 });
     }
     if (!subject || !message) {
-      return NextResponse.json(
-        { error: "subject and message are required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "subject and message are required" }, { status: 400 });
     }
 
     // Fetch personnel data
     const data = await getPersonnelData(personnelIds);
-    type Recipient = {
-      id: string;
-      email?: string;
-      phone?: string;
-      name?: string;
-    };
+    type Recipient = { id: string; email?: string; phone?: string; name?: string };
 
     const recipients: Recipient[] = data
       .map((p: any) => ({
@@ -214,31 +187,6 @@ export async function POST(req: NextRequest) {
       { error: e?.message || "Internal error" },
       { status: 500 }
     );
-  }
-}
-
-async function updateRecipientStatus(
-  messageId: string | null,
-  personnelId: string,
-  channel: string,
-  status: string,
-  error?: string
-) {
-  if (!messageId || !useFirestore()) return;
-  try {
-    const { getDb } = await import("@/integrations/firebase/client");
-    const { doc, updateDoc } = await import("firebase/firestore");
-    const db = getDb();
-    await updateDoc(
-      doc(db, "message_recipients", `${messageId}_${personnelId}`),
-      {
-        [`${channel}_status`]: status,
-        [`${channel}_error`]: error || "",
-        updated_at: new Date().toISOString(),
-      }
-    );
-  } catch (e) {
-    console.warn("Failed to update recipient status:", e);
   }
 }
 

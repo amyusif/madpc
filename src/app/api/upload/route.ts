@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { uploadFile, FILE_CONFIGS, STORAGE_FOLDERS } from '@/utils/firebaseStorage';
+import { put } from '@vercel/blob';
+import { FILE_CONFIGS, STORAGE_FOLDERS, validateFile, generateUniqueFileName } from '@/utils/storageUtils';
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,20 +10,13 @@ export async function POST(request: NextRequest) {
     const folder = formData.get('folder') as string;
 
     if (!file) {
-      return NextResponse.json(
-        { success: false, error: 'No file provided' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'No file provided' }, { status: 400 });
     }
 
     if (!uploadType) {
-      return NextResponse.json(
-        { success: false, error: 'Upload type is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'Upload type is required' }, { status: 400 });
     }
 
-    // Determine upload configuration based on type
     let config;
     let targetFolder = folder;
 
@@ -36,7 +30,7 @@ export async function POST(request: NextRequest) {
         targetFolder = targetFolder || STORAGE_FOLDERS.USER_PROFILES;
         break;
       case 'case-evidence':
-        config = FILE_CONFIGS.IMAGES; // Can be extended to support videos/docs
+        config = FILE_CONFIGS.IMAGES;
         targetFolder = targetFolder || STORAGE_FOLDERS.CASE_EVIDENCE;
         break;
       case 'document':
@@ -48,42 +42,31 @@ export async function POST(request: NextRequest) {
         targetFolder = targetFolder || STORAGE_FOLDERS.REPORTS;
         break;
       default:
-        return NextResponse.json(
-          { success: false, error: 'Invalid upload type' },
-          { status: 400 }
-        );
+        return NextResponse.json({ success: false, error: 'Invalid upload type' }, { status: 400 });
     }
 
-    // Upload file
-    const result = await uploadFile(file, {
-      folder: targetFolder,
-      maxSize: config.maxSize,
-      allowedTypes: config.allowedTypes,
-      generateUniqueName: true,
-      makePublic: true,
-    });
-
-    if (!result.success) {
-      return NextResponse.json(
-        { success: false, error: result.error },
-        { status: 400 }
-      );
+    const validation = validateFile(file, config);
+    if (!validation.isValid) {
+      return NextResponse.json({ success: false, error: validation.error }, { status: 400 });
     }
+
+    const fileName = generateUniqueFileName(file.name);
+    const blobPath = `${targetFolder}/${fileName}`;
+
+    const blob = await put(blobPath, file, { access: 'public' });
 
     return NextResponse.json({
       success: true,
       file: {
-        url: result.url,
-        path: result.path,
-        size: result.size,
-        type: result.type,
+        url: blob.url,
+        path: blobPath,
+        size: file.size,
+        type: file.type,
       },
     });
   } catch (error) {
     console.error('Upload API error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }
+

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/integrations/database";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
   const { identifier } = await req.json();
@@ -9,16 +9,14 @@ export async function POST(req: NextRequest) {
 
   const input = identifier.trim();
   if (input.includes("@")) {
-    // Treat as email directly
     return NextResponse.json({ email: input });
   }
 
   try {
-    // Get personnel from Firebase and find by badge number (username)
-    const personnel = await db.getPersonnel();
-    const profile = personnel.find(p => 
-      p.badge_number.toLowerCase() === input.toLowerCase()
-    );
+    const profile = await prisma.personnel.findFirst({
+      where: { badge_number: { equals: input, mode: "insensitive" } },
+      select: { email: true },
+    });
 
     if (!profile?.email) {
       return NextResponse.json({ error: "not found" }, { status: 404 });

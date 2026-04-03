@@ -1,71 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { deleteFile } from '@/utils/firebaseStorage';
+import { del } from '@vercel/blob';
 
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const filePath = searchParams.get('path');
+    const fileUrl = searchParams.get('url') || searchParams.get('path');
 
-    if (!filePath) {
-      return NextResponse.json(
-        { success: false, error: 'File path is required' },
-        { status: 400 }
-      );
+    if (!fileUrl) {
+      return NextResponse.json({ success: false, error: 'File URL is required' }, { status: 400 });
     }
 
-    // Delete file from Google Cloud Storage
-    const result = await deleteFile(filePath);
+    await del(fileUrl);
 
-    if (!result.success) {
-      return NextResponse.json(
-        { success: false, error: result.error },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: 'File deleted successfully',
-    });
+    return NextResponse.json({ success: true, message: 'File deleted successfully' });
   } catch (error) {
     console.error('Delete API error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const { filePath } = await request.json();
+    const { filePath, fileUrl } = await request.json();
+    const target = fileUrl || filePath;
 
-    if (!filePath) {
-      return NextResponse.json(
-        { success: false, error: 'File path is required' },
-        { status: 400 }
-      );
+    if (!target) {
+      return NextResponse.json({ success: false, error: 'File URL is required' }, { status: 400 });
     }
 
-    // Delete file from Google Cloud Storage
-    const result = await deleteFile(filePath);
+    await del(target);
 
-    if (!result.success) {
-      return NextResponse.json(
-        { success: false, error: result.error },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: 'File deleted successfully',
-    });
+    return NextResponse.json({ success: true, message: 'File deleted successfully' });
   } catch (error) {
     console.error('Delete API error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }
+
+

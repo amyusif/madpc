@@ -106,7 +106,7 @@ export function CaseEvidenceUpload({
         const evidenceFiles: EvidenceFile[] = result.files.map((file, index) => ({
           id: `evidence_${index}`,
           case_id: caseId,
-          file_name: file.metadata?.customMetadata?.originalName || file.name,
+          file_name: (file.metadata as Record<string, Record<string, string>> | undefined)?.customMetadata?.originalName || file.name,
           file_url: file.url,
           file_path: file.path,
           file_type: file.type,

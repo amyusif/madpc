@@ -1,9 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut as fbSignOut, User as FbUser } from "firebase/auth";
-import { getDb, getFirebaseApp } from "@/integrations/firebase/client";
-import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 
-type Role = "district_commander" | "unit_supervisor";
+type Role = "district_commander" | "unit_supervisor" | string;
 
 interface Profile {
   id: string;
@@ -35,90 +32,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // On mount, check current session via cookie
   useEffect(() => {
-    const app = getFirebaseApp();
-    const auth = getAuth(app);
-    const unsub = onAuthStateChanged(auth, async (fbUser) => {
-      if (fbUser) {
-        const u = { id: fbUser.uid, email: fbUser.email };
-        setUser(u);
-        await fetchProfile(fbUser);
-      } else {
-        setUser(null);
-        setProfile(null);
-      }
-      setLoading(false);
-    });
-    return () => unsub();
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.user) {
+          setUser({ id: data.user.sub, email: data.user.email });
+          // Fetch profile from personnel
+          return fetch(`/api/profiles/${data.user.sub}`).then((r) => r.json());
+        }
+        return null;
+      })
+      .then((data) => {
+        if (data?.profile) {
+          setProfile(data.profile);
+        }
+      })
+      .catch(() => {
+        // unauthenticated; leave user/profile null
+      })
+      .finally(() => setLoading(false));
   }, []);
-
-  const fetchProfile = async (fbUser: FbUser) => {
-    try {
-      const db = getDb();
-      const ref = doc(db, "profiles", fbUser.uid);
-      const snap = await getDoc(ref);
-      if (snap.exists()) {
-        setProfile({ id: fbUser.uid, ...(snap.data() as any) });
-      } else {
-        // Seed minimal profile if missing
-        const seed: Profile = {
-          id: fbUser.uid,
-          full_name: fbUser.email || "User",
-          role: "unit_supervisor",
-          avatar_url: null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-        await setDoc(ref, seed);
-        setProfile(seed);
-      }
-    } catch (e) {
-      console.error("Profile fetch error:", e);
-      setProfile(null);
-    }
-  };
-
-  const updateProfile = async (updates: Partial<Omit<Profile, "id" | "created_at">>) => {
-    if (!user?.id) {
-      throw new Error("No user authenticated");
-    }
-
-    try {
-      const db = getDb();
-      const profileRef = doc(db, "profiles", user.id);
-      
-      const updateData = {
-        ...updates,
-        updated_at: new Date().toISOString(),
-      };
-
-      await updateDoc(profileRef, updateData);
-      
-      // Update local state
-      setProfile(prev => prev ? { ...prev, ...updateData } : null);
-    } catch (error) {
-      console.error("Profile update error:", error);
-      throw new Error("Failed to update profile");
-    }
-  };
 
   const signIn = async (email: string, password: string) => {
     setLoading(true);
     try {
-      const auth = getAuth(getFirebaseApp());
-      await signInWithEmailAndPassword(auth, email, password);
-      // onAuthStateChanged will update state
-    } catch (e: any) {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to sign in");
+
+      const u = { id: data.id, email: data.email };
+      setUser(u);
+
+      // Fetch profile
+      const profileRes = await fetch(`/api/profiles/${data.id}`);
+      const profileData = await profileRes.json();
+      if (profileData.profile) setProfile(profileData.profile);
+    } finally {
       setLoading(false);
-      throw new Error(e?.message || "Failed to sign in");
     }
   };
 
   const signOut = async () => {
     setLoading(true);
     try {
-      const auth = getAuth(getFirebaseApp());
-      await fbSignOut(auth);
+      await fetch("/api/auth/logout", { method: "POST" });
       setUser(null);
       setProfile(null);
       if (typeof window !== "undefined") {
@@ -128,11 +91,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           caches.keys().then((names) => names.forEach((n) => caches.delete(n)));
         }
       }
-    } catch (e: any) {
-      throw new Error(e?.message || "Failed to sign out");
     } finally {
       setLoading(false);
     }
+  };
+
+  const updateProfile = async (updates: Partial<Omit<Profile, "id" | "created_at">>) => {
+    if (!user?.id) throw new Error("No user authenticated");
+
+    const res = await fetch(`/api/profiles/${user.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to update profile");
+
+    setProfile((prev) => (prev ? { ...prev, ...updates } : null));
   };
 
   const value: AuthContextType = { user, profile, session: null, loading, signIn, signOut, updateProfile };
@@ -146,3 +121,4 @@ export function useAuth() {
   }
   return context;
 }
+

@@ -72,17 +72,13 @@ export function UserProfilePhotoUpload({
 
     try {
       // Delete old photo if it exists
-      if (photoUrl && photoUrl.includes('firebasestorage.googleapis.com')) {
+      if (photoUrl) {
         try {
-          // Extract file path from Firebase Storage URL
-          const urlParts = photoUrl.split('/o/')[1];
-          if (urlParts) {
-            const oldPath = decodeURIComponent(urlParts.split('?')[0]);
-            const deleteResult = await deleteFile(STORAGE_BUCKETS.USER_PROFILES, oldPath);
-            if (!deleteResult.success) {
-              console.warn('Failed to delete old photo:', deleteResult.error);
-            }
-          }
+          await fetch('/api/upload/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fileUrl: photoUrl }),
+          });
         } catch (error) {
           console.warn('Failed to delete old photo:', error);
         }
@@ -118,17 +114,14 @@ export function UserProfilePhotoUpload({
     setIsUploading(true);
 
     try {
-      // Delete photo from Firebase Storage if it exists
-      if (photoUrl.includes('firebasestorage.googleapis.com')) {
+      // Delete photo from storage if it exists
+      if (photoUrl) {
         try {
-          const urlParts = photoUrl.split('/o/')[1];
-          if (urlParts) {
-            const filePath = decodeURIComponent(urlParts.split('?')[0]);
-            const deleteResult = await deleteFile(STORAGE_BUCKETS.USER_PROFILES, filePath);
-            if (!deleteResult.success) {
-              console.warn('Failed to delete photo from storage:', deleteResult.error);
-            }
-          }
+          await fetch('/api/upload/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fileUrl: photoUrl }),
+          });
         } catch (error) {
           console.warn('Failed to delete photo from storage:', error);
         }
