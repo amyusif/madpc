@@ -502,7 +502,7 @@ const [composeOpen, setComposeOpen] = useState(false);
                         <PersonnelPhotoUpload
                           personnelId={person.id}
                           currentPhotoUrl={person.photo_url ?? undefined}
-                          badgeNumber={person.badge_number}
+                          badgeNumber={person.service_number || person.badge_number}
                           fullName={`${person.first_name} ${person.last_name}`}
                           onPhotoUpdate={(photoUrl) => {
                             // Update the person's photo in the list
@@ -515,8 +515,13 @@ const [composeOpen, setComposeOpen] = useState(false);
                           <div className="text-sm font-medium text-gray-900">
                             {person.first_name} {person.last_name}
                           </div>
-                          <div className="text-sm text-gray-500">
-                            Badge: {person.badge_number}
+                          <div className="text-xs text-gray-500 space-y-0.5">
+                            {person.service_number && <div>SN: {person.service_number}</div>}
+                            {person.pin_number && <div>PN: {person.pin_number}</div>}
+                            {person.police_office_number && <div>PO: {person.police_office_number}</div>}
+                            {!person.service_number && !person.pin_number && !person.police_office_number && (
+                              <div>Badge: {person.badge_number}</div>
+                            )}
                           </div>
                         </div>
                       </div>

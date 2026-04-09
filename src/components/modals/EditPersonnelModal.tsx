@@ -40,7 +40,9 @@ export default function EditPersonnelModal({
   const triggerAutoRefresh = useAutoRefresh();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    badgeNumber: "",
+    serviceNumber: "",
+    pinNumber: "",
+    policeOfficeNumber: "",
     firstName: "",
     lastName: "",
     email: "",
@@ -60,7 +62,9 @@ export default function EditPersonnelModal({
   useEffect(() => {
     if (personnel) {
       setFormData({
-        badgeNumber: personnel.badge_number,
+        serviceNumber: personnel.service_number || personnel.badge_number,
+        pinNumber: personnel.pin_number || "",
+        policeOfficeNumber: personnel.police_office_number || "",
         firstName: personnel.first_name,
         lastName: personnel.last_name,
         email: personnel.email,
@@ -84,7 +88,9 @@ export default function EditPersonnelModal({
   const resetForm = () => {
     if (personnel) {
       setFormData({
-        badgeNumber: personnel.badge_number,
+        serviceNumber: personnel.service_number || personnel.badge_number,
+        pinNumber: personnel.pin_number || "",
+        policeOfficeNumber: personnel.police_office_number || "",
         firstName: personnel.first_name,
         lastName: personnel.last_name,
         email: personnel.email,
@@ -149,23 +155,28 @@ export default function EditPersonnelModal({
 
       // Validate required fields
       if (
+        !formData.serviceNumber ||
+        !formData.pinNumber ||
+        !formData.policeOfficeNumber ||
         !formData.firstName ||
         !formData.lastName ||
         !formData.email ||
-        !formData.badgeNumber ||
         !formData.rank ||
         !formData.unit
       ) {
         toast({
           title: "❌ Validation Error",
-          description: "Please fill in all required fields.",
+          description: "Please fill in all required fields including SN, PN, and PO.",
           variant: "destructive",
         });
         return;
       }
 
       const personnelData = {
-        badge_number: formData.badgeNumber,
+        badge_number: formData.serviceNumber,
+        service_number: formData.serviceNumber,
+        pin_number: formData.pinNumber,
+        police_office_number: formData.policeOfficeNumber,
         first_name: formData.firstName,
         last_name: formData.lastName,
         email: formData.email,
@@ -262,22 +273,51 @@ export default function EditPersonnelModal({
               Basic Information
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="badgeNumber" className="text-sm font-medium">
-                  Badge Number *
-                </Label>
+            {/* Identification Numbers */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Identification Numbers *</Label>
+              <div className="flex items-center gap-2">
+                <div className="w-36 flex-shrink-0">
+                  <div className="flex items-center h-10 px-3 rounded-md border bg-muted text-sm font-medium">
+                    SN &ndash; Service No.
+                  </div>
+                </div>
                 <Input
-                  id="badgeNumber"
-                  value={formData.badgeNumber}
-                  onChange={(e) =>
-                    handleInputChange("badgeNumber", e.target.value)
-                  }
-                  placeholder="e.g., SGT001"
+                  placeholder="Enter service number"
+                  value={formData.serviceNumber}
+                  onChange={(e) => handleInputChange("serviceNumber", e.target.value)}
                   required
                 />
               </div>
+              <div className="flex items-center gap-2">
+                <div className="w-36 flex-shrink-0">
+                  <div className="flex items-center h-10 px-3 rounded-md border bg-muted text-sm font-medium">
+                    PN &ndash; Pin No.
+                  </div>
+                </div>
+                <Input
+                  placeholder="Enter pin number"
+                  value={formData.pinNumber}
+                  onChange={(e) => handleInputChange("pinNumber", e.target.value)}
+                  required
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-36 flex-shrink-0">
+                  <div className="flex items-center h-10 px-3 rounded-md border bg-muted text-sm font-medium">
+                    PO &ndash; Police Off.
+                  </div>
+                </div>
+                <Input
+                  placeholder="Enter police office number"
+                  value={formData.policeOfficeNumber}
+                  onChange={(e) => handleInputChange("policeOfficeNumber", e.target.value)}
+                  required
+                />
+              </div>
+            </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="status" className="text-sm font-medium">
                   Status *

@@ -47,6 +47,9 @@ enum UserRole {
 model Personnel {
   id                 String          @id @default(cuid())
   badge_number       String          @unique
+  service_number     String?         @unique
+  pin_number         String?         @unique
+  police_office_number String?       @unique
   first_name         String
   last_name          String
   email              String          @unique

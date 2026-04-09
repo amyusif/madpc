@@ -39,7 +39,9 @@ export default function AddPersonnelModal({
   const triggerAutoRefresh = useAutoRefresh();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    badgeNumber: "",
+    serviceNumber: "",
+    pinNumber: "",
+    policeOfficeNumber: "",
     firstName: "",
     lastName: "",
     email: "",
@@ -90,8 +92,12 @@ export default function AddPersonnelModal({
     setLoading(true);
     try {
       // Validate required fields
-      if (!formData.badgeNumber.trim())
-        throw new Error("Service number is required");
+      if (!formData.serviceNumber.trim())
+        throw new Error("Service Number (SN) is required");
+      if (!formData.pinNumber.trim())
+        throw new Error("Pin Number (PN) is required");
+      if (!formData.policeOfficeNumber.trim())
+        throw new Error("Police Office Number (PO) is required");
       if (!formData.firstName.trim()) throw new Error("First name is required");
       if (!formData.lastName.trim()) throw new Error("Last name is required");
       if (!formData.email.trim()) throw new Error("Email is required");
@@ -99,7 +105,10 @@ export default function AddPersonnelModal({
       if (!formData.unit) throw new Error("Unit is required");
 
       const personnelData = {
-        badge_number: formData.badgeNumber,
+        badge_number: formData.serviceNumber,
+        service_number: formData.serviceNumber,
+        pin_number: formData.pinNumber,
+        police_office_number: formData.policeOfficeNumber,
         first_name: formData.firstName,
         last_name: formData.lastName,
         email: formData.email,
@@ -130,7 +139,7 @@ export default function AddPersonnelModal({
       console.log("Personnel saved successfully with ID:", newPersonnel.id);
       toast({
         title: "✅ Personnel Added Successfully!",
-        description: `${formData.firstName} ${formData.lastName} (Badge: ${formData.badgeNumber}) has been added to the system`,
+        description: `${formData.firstName} ${formData.lastName} (SN: ${formData.serviceNumber}) has been added to the system`,
         duration: 5000,
         className: "bg-green-50 border-green-200",
       });
@@ -139,7 +148,9 @@ export default function AddPersonnelModal({
 
       // Reset form data and image
       setFormData({
-        badgeNumber: "",
+        serviceNumber: "",
+        pinNumber: "",
+        policeOfficeNumber: "",
         firstName: "",
         lastName: "",
         email: "",
@@ -241,7 +252,7 @@ export default function AddPersonnelModal({
               <div className="flex-1">
                 <FileUpload
                   bucket={STORAGE_BUCKETS.PERSONNEL_PHOTOS}
-                  folder={`personnel/${formData.badgeNumber || 'unknown'}`}
+                  folder={`personnel/${formData.serviceNumber || 'unknown'}`}
                   config={FILE_CONFIGS.IMAGES}
                   onUploadComplete={handleImageUpload}
                   onError={handleImageError}
@@ -260,16 +271,51 @@ export default function AddPersonnelModal({
           <div className="grid grid-cols-2 gap-4">
             {/* Left Column */}
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="badgeNumber">Service Number</Label>
-                <Input
-                  id="badgeNumber"
-                  value={formData.badgeNumber}
-                  onChange={(e) =>
-                    setFormData({ ...formData, badgeNumber: e.target.value })
-                  }
-                  required
-                />
+              {/* Identification Numbers */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Identification Numbers</Label>
+                {/* SN */}
+                <div className="flex items-center gap-2">
+                  <div className="w-32 flex-shrink-0">
+                    <div className="flex items-center h-10 px-3 rounded-md border bg-muted text-sm font-medium">
+                      SN &ndash; Service No.
+                    </div>
+                  </div>
+                  <Input
+                    placeholder="Enter service number"
+                    value={formData.serviceNumber}
+                    onChange={(e) => setFormData({ ...formData, serviceNumber: e.target.value })}
+                    required
+                  />
+                </div>
+                {/* PN */}
+                <div className="flex items-center gap-2">
+                  <div className="w-32 flex-shrink-0">
+                    <div className="flex items-center h-10 px-3 rounded-md border bg-muted text-sm font-medium">
+                      PN &ndash; Pin No.
+                    </div>
+                  </div>
+                  <Input
+                    placeholder="Enter pin number"
+                    value={formData.pinNumber}
+                    onChange={(e) => setFormData({ ...formData, pinNumber: e.target.value })}
+                    required
+                  />
+                </div>
+                {/* PO */}
+                <div className="flex items-center gap-2">
+                  <div className="w-32 flex-shrink-0">
+                    <div className="flex items-center h-10 px-3 rounded-md border bg-muted text-sm font-medium">
+                      PO &ndash; Police Off.
+                    </div>
+                  </div>
+                  <Input
+                    placeholder="Enter police office number"
+                    value={formData.policeOfficeNumber}
+                    onChange={(e) => setFormData({ ...formData, policeOfficeNumber: e.target.value })}
+                    required
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">

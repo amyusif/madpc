@@ -85,11 +85,31 @@ export default function ViewPersonnelModal({
                   {personnel.status.charAt(0).toUpperCase() + personnel.status.slice(1)}
                 </Badge>
               </div>
-              <div className="flex items-center gap-4 text-sm text-gray-600">
-                <div className="flex items-center gap-1">
-                  <Shield className="w-4 h-4" />
-                  <span>Badge: {personnel.badge_number}</span>
-                </div>
+              <div className="flex items-center gap-4 text-sm text-gray-600 flex-wrap">
+                {personnel.service_number && (
+                  <div className="flex items-center gap-1">
+                    <Shield className="w-4 h-4" />
+                    <span>SN: {personnel.service_number}</span>
+                  </div>
+                )}
+                {personnel.pin_number && (
+                  <div className="flex items-center gap-1">
+                    <Shield className="w-4 h-4" />
+                    <span>PN: {personnel.pin_number}</span>
+                  </div>
+                )}
+                {personnel.police_office_number && (
+                  <div className="flex items-center gap-1">
+                    <Shield className="w-4 h-4" />
+                    <span>PO: {personnel.police_office_number}</span>
+                  </div>
+                )}
+                {!personnel.service_number && !personnel.pin_number && !personnel.police_office_number && (
+                  <div className="flex items-center gap-1">
+                    <Shield className="w-4 h-4" />
+                    <span>Badge: {personnel.badge_number}</span>
+                  </div>
+                )}
                 <div className="flex items-center gap-1">
                   <Calendar className="w-4 h-4" />
                   <span>

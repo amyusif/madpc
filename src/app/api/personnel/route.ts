@@ -23,6 +23,9 @@ export async function POST(request: NextRequest) {
     const row = await prisma.personnel.create({
       data: {
         badge_number: body.badge_number,
+        service_number: body.service_number ?? null,
+        pin_number: body.pin_number ?? null,
+        police_office_number: body.police_office_number ?? null,
         first_name: body.first_name,
         last_name: body.last_name,
         email: body.email,

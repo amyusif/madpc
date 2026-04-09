@@ -16,6 +16,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       where: { id },
       data: {
         ...(body.badge_number !== undefined && { badge_number: body.badge_number }),
+        ...(body.service_number !== undefined && { service_number: body.service_number }),
+        ...(body.pin_number !== undefined && { pin_number: body.pin_number }),
+        ...(body.police_office_number !== undefined && { police_office_number: body.police_office_number }),
         ...(body.first_name !== undefined && { first_name: body.first_name }),
         ...(body.last_name !== undefined && { last_name: body.last_name }),
         ...(body.email !== undefined && { email: body.email }),

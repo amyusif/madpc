@@ -48,6 +48,9 @@ export const db = {
     const row = await prisma.personnel.create({
       data: {
         badge_number: personnel.badge_number,
+        service_number: (personnel as any).service_number ?? null,
+        pin_number: (personnel as any).pin_number ?? null,
+        police_office_number: (personnel as any).police_office_number ?? null,
         first_name: personnel.first_name,
         last_name: personnel.last_name,
         email: personnel.email,
@@ -83,6 +86,9 @@ export const db = {
       where: { id },
       data: {
         ...(personnel.badge_number !== undefined && { badge_number: personnel.badge_number }),
+        ...((personnel as any).service_number !== undefined && { service_number: (personnel as any).service_number }),
+        ...((personnel as any).pin_number !== undefined && { pin_number: (personnel as any).pin_number }),
+        ...((personnel as any).police_office_number !== undefined && { police_office_number: (personnel as any).police_office_number }),
         ...(personnel.first_name !== undefined && { first_name: personnel.first_name }),
         ...(personnel.last_name !== undefined && { last_name: personnel.last_name }),
         ...(personnel.email !== undefined && { email: personnel.email }),
@@ -273,6 +279,9 @@ function serializeDuty(row: any): Duty {
 export interface Personnel {
   id: string;
   badge_number: string;
+  service_number?: string | null;
+  pin_number?: string | null;
+  police_office_number?: string | null;
   first_name: string;
   last_name: string;
   email: string;
