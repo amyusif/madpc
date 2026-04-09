@@ -55,16 +55,35 @@ const statusOptions = [
 
 const rankOptions = [
   "constable",
-  "corporal", 
+  "lance_corporal",
+  "corporal",
   "sergeant",
   "inspector",
-  "chief inspector",
+  "chief_inspector",
+  "assistant_superintendent",
+  "deputy_superintendent",
   "superintendent",
-  "chief superintendent",
-  "assistant commissioner",
-  "deputy commissioner",
+  "chief_superintendent",
+  "assistant_commissioner",
+  "deputy_commissioner",
   "commissioner",
 ];
+
+const rankLabels: Record<string, string> = {
+  constable: "Constable",
+  lance_corporal: "Lance Corporal",
+  corporal: "Corporal",
+  sergeant: "Sergeant",
+  inspector: "Inspector",
+  chief_inspector: "Chief Inspector",
+  assistant_superintendent: "Assistant Superintendent",
+  deputy_superintendent: "Deputy Superintendent",
+  superintendent: "Superintendent",
+  chief_superintendent: "Chief Superintendent",
+  assistant_commissioner: "Assistant Commissioner",
+  deputy_commissioner: "Deputy Commissioner",
+  commissioner: "Commissioner",
+};
 
 const unitOptions = [
   "patrol",
@@ -235,7 +254,7 @@ export default function PersonnelFilters({
                       }`}
                       onClick={() => toggleArrayFilter("rank", rank)}
                     >
-                      {rank}
+                      {rankLabels[rank] ?? rank}
                     </Badge>
                   ))}
                 </div>

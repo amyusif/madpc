@@ -255,80 +255,134 @@ export default function EditPersonnelModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader className="pb-4">
-          <DialogTitle className="text-xl font-bold text-gray-800 flex items-center gap-2">
-            <Edit className="w-5 h-5 text-blue-600" />
-            Edit Personnel - {personnel.first_name} {personnel.last_name}
+      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="pb-3 border-b border-gray-100">
+          <DialogTitle className="flex items-center gap-3 text-xl font-bold text-gray-900">
+            <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+              <Edit className="w-4 h-4 text-blue-600" />
+            </div>
+            Edit Personnel
           </DialogTitle>
-          <p className="text-sm text-gray-600 mt-1">
-            Update the personnel information below
+          <p className="text-sm text-gray-500 ml-12">
+            {personnel.first_name} {personnel.last_name}
           </p>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Basic Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Basic Information
-            </h3>
+        <form onSubmit={handleSubmit} className="space-y-5 pt-2">
 
-            {/* Identification Numbers */}
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">Identification Numbers *</Label>
-              <div className="flex items-center gap-2">
-                <div className="w-36 flex-shrink-0">
-                  <div className="flex items-center h-10 px-3 rounded-md border bg-muted text-sm font-medium">
-                    SN &ndash; Service No.
-                  </div>
-                </div>
+          {/* Identification Numbers */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="h-4 w-1 bg-blue-600 rounded-full" />
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Identification Numbers</h3>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-gray-600">SN – Service Number <span className="text-red-500">*</span></Label>
                 <Input
-                  placeholder="Enter service number"
+                  placeholder="e.g. SN/1234"
                   value={formData.serviceNumber}
                   onChange={(e) => handleInputChange("serviceNumber", e.target.value)}
                   required
                 />
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-36 flex-shrink-0">
-                  <div className="flex items-center h-10 px-3 rounded-md border bg-muted text-sm font-medium">
-                    PN &ndash; Pin No.
-                  </div>
-                </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-gray-600">PN – Pin Number <span className="text-red-500">*</span></Label>
                 <Input
-                  placeholder="Enter pin number"
+                  placeholder="e.g. PN/5678"
                   value={formData.pinNumber}
                   onChange={(e) => handleInputChange("pinNumber", e.target.value)}
                   required
                 />
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-36 flex-shrink-0">
-                  <div className="flex items-center h-10 px-3 rounded-md border bg-muted text-sm font-medium">
-                    PO &ndash; Police Off.
-                  </div>
-                </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-gray-600">PO – Police Office No. <span className="text-red-500">*</span></Label>
                 <Input
-                  placeholder="Enter police office number"
+                  placeholder="e.g. PO/9012"
                   value={formData.policeOfficeNumber}
                   onChange={(e) => handleInputChange("policeOfficeNumber", e.target.value)}
                   required
                 />
               </div>
             </div>
+          </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="status" className="text-sm font-medium">
-                  Status *
-                </Label>
-                <Select
-                  value={formData.status}
-                  onValueChange={(value) => handleInputChange("status", value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
+          {/* Personal Details */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="h-4 w-1 bg-emerald-500 rounded-full" />
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Personal Details</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="firstName" className="text-xs font-medium text-gray-600">First Name <span className="text-red-500">*</span></Label>
+                <Input
+                  id="firstName"
+                  placeholder="Enter first name"
+                  value={formData.firstName}
+                  onChange={(e) => handleInputChange("firstName", e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="lastName" className="text-xs font-medium text-gray-600">Last Name <span className="text-red-500">*</span></Label>
+                <Input
+                  id="lastName"
+                  placeholder="Enter last name"
+                  value={formData.lastName}
+                  onChange={(e) => handleInputChange("lastName", e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-gray-600">Rank <span className="text-red-500">*</span></Label>
+                <Select value={formData.rank} onValueChange={(v) => handleInputChange("rank", v)}>
+                  <SelectTrigger><SelectValue placeholder="Select rank" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="constable">Constable</SelectItem>
+                    <SelectItem value="lance_corporal">Lance Corporal</SelectItem>
+                    <SelectItem value="corporal">Corporal</SelectItem>
+                    <SelectItem value="sergeant">Sergeant</SelectItem>
+                    <SelectItem value="inspector">Inspector</SelectItem>
+                    <SelectItem value="chief_inspector">Chief Inspector</SelectItem>
+                    <SelectItem value="assistant_superintendent">Assistant Superintendent</SelectItem>
+                    <SelectItem value="deputy_superintendent">Deputy Superintendent</SelectItem>
+                    <SelectItem value="superintendent">Superintendent</SelectItem>
+                    <SelectItem value="chief_superintendent">Chief Superintendent</SelectItem>
+                    <SelectItem value="assistant_commissioner">Assistant Commissioner</SelectItem>
+                    <SelectItem value="deputy_commissioner">Deputy Commissioner</SelectItem>
+                    <SelectItem value="commissioner">Commissioner</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-gray-600">Unit <span className="text-red-500">*</span></Label>
+                <Select value={formData.unit} onValueChange={(v) => handleInputChange("unit", v)}>
+                  <SelectTrigger><SelectValue placeholder="Select unit" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="patrol">Patrol Unit</SelectItem>
+                    <SelectItem value="investigation">Investigation Unit</SelectItem>
+                    <SelectItem value="traffic">Traffic Unit</SelectItem>
+                    <SelectItem value="cybercrime">Cybercrime Unit</SelectItem>
+                    <SelectItem value="administration">Administration</SelectItem>
+                    <SelectItem value="training">Training</SelectItem>
+                    <SelectItem value="special operations">Special Operations</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="dateJoined" className="text-xs font-medium text-gray-600">Date Joined</Label>
+                <Input
+                  id="dateJoined"
+                  type="date"
+                  value={formData.dateJoined}
+                  onChange={(e) => handleInputChange("dateJoined", e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-gray-600">Status <span className="text-red-500">*</span></Label>
+                <Select value={formData.status} onValueChange={(v) => handleInputChange("status", v)}>
+                  <SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="active">Active</SelectItem>
                     <SelectItem value="inactive">Inactive</SelectItem>
@@ -338,286 +392,62 @@ export default function EditPersonnelModal({
                 </Select>
               </div>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="firstName" className="text-sm font-medium">
-                  First Name *
-                </Label>
-                <Input
-                  id="firstName"
-                  value={formData.firstName}
-                  onChange={(e) =>
-                    handleInputChange("firstName", e.target.value)
-                  }
-                  placeholder="Enter first name"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="lastName" className="text-sm font-medium">
-                  Last Name *
-                </Label>
-                <Input
-                  id="lastName"
-                  value={formData.lastName}
-                  onChange={(e) =>
-                    handleInputChange("lastName", e.target.value)
-                  }
-                  placeholder="Enter last name"
-                  required
-                />
-              </div>
-            </div>
           </div>
 
           {/* Contact Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Contact Information
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium">
-                  Email Address *
-                </Label>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="h-4 w-1 bg-violet-500 rounded-full" />
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Contact Information</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="email" className="text-xs font-medium text-gray-600">Email Address <span className="text-red-500">*</span></Label>
                 <Input
                   id="email"
                   type="email"
+                  placeholder="officer@police.gov.gh"
                   value={formData.email}
                   onChange={(e) => handleInputChange("email", e.target.value)}
-                  placeholder="Enter email address"
                   required
                 />
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="phone" className="text-sm font-medium">
-                  Phone Number
-                </Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="phone" className="text-xs font-medium text-gray-600">Phone Number</Label>
                 <Input
                   id="phone"
+                  type="tel"
+                  placeholder="+233XXXXXXXXX"
                   value={formData.phone}
                   onChange={(e) => handleInputChange("phone", e.target.value)}
-                  placeholder="Enter phone number"
                 />
               </div>
-            </div>
-          </div>
-
-          {/* Professional Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Professional Information
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="rank" className="text-sm font-medium">
-                  Rank *
-                </Label>
-                <Select
-                  value={formData.rank}
-                  onValueChange={(value) => handleInputChange("rank", value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select rank" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="constable">Constable</SelectItem>
-                    <SelectItem value="corporal">Corporal</SelectItem>
-                    <SelectItem value="sergeant">Sergeant</SelectItem>
-                    <SelectItem value="inspector">Inspector</SelectItem>
-                    <SelectItem value="chief inspector">
-                      Chief Inspector
-                    </SelectItem>
-                    <SelectItem value="superintendent">
-                      Superintendent
-                    </SelectItem>
-                    <SelectItem value="chief superintendent">
-                      Chief Superintendent
-                    </SelectItem>
-                    <SelectItem value="assistant commissioner">
-                      Assistant Commissioner
-                    </SelectItem>
-                    <SelectItem value="deputy commissioner">
-                      Deputy Commissioner
-                    </SelectItem>
-                    <SelectItem value="commissioner">Commissioner</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="unit" className="text-sm font-medium">
-                  Unit *
-                </Label>
-                <Select
-                  value={formData.unit}
-                  onValueChange={(value) => handleInputChange("unit", value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select unit" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="patrol">Patrol</SelectItem>
-                    <SelectItem value="investigation">Investigation</SelectItem>
-                    <SelectItem value="traffic">Traffic</SelectItem>
-                    <SelectItem value="cybercrime">Cybercrime</SelectItem>
-                    <SelectItem value="administration">
-                      Administration
-                    </SelectItem>
-                    <SelectItem value="training">Training</SelectItem>
-                    <SelectItem value="special operations">
-                      Special Operations
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="dateJoined" className="text-sm font-medium">
-                  Date Joined
-                </Label>
-                <Input
-                  id="dateJoined"
-                  type="date"
-                  value={formData.dateJoined}
-                  onChange={(e) =>
-                    handleInputChange("dateJoined", e.target.value)
-                  }
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Personal Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Personal Information
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="maritalStatus" className="text-sm font-medium">
-                  Marital Status *
-                </Label>
-                <Select
-                  value={formData.maritalStatus}
-                  onValueChange={(value) =>
-                    handleInputChange("maritalStatus", value)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select marital status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Single">Single</SelectItem>
-                    <SelectItem value="Married">Married</SelectItem>
-                    <SelectItem value="Divorced">Divorced</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {formData.maritalStatus === "Married" && (
-                <div className="space-y-2">
-                  <Label htmlFor="spouse" className="text-sm font-medium">
-                    Spouse Name
-                  </Label>
-                  <Input
-                    id="spouse"
-                    value={formData.spouse}
-                    onChange={(e) =>
-                      handleInputChange("spouse", e.target.value)
-                    }
-                    placeholder="Enter spouse name"
-                  />
-                </div>
-              )}
-
-              {formData.maritalStatus === "Divorced" && (
-                <>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Children</Label>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id="noChildren"
-                        checked={formData.noChildren}
-                        onChange={(e) =>
-                          handleInputChange("noChildren", e.target.checked)
-                        }
-                        className="rounded border-gray-300"
-                      />
-                      <Label htmlFor="noChildren" className="text-sm">
-                        No children
-                      </Label>
-                    </div>
-                  </div>
-
-                  {!formData.noChildren && (
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="childrenCount"
-                        className="text-sm font-medium"
-                      >
-                        Number of Children
-                      </Label>
-                      <Input
-                        id="childrenCount"
-                        type="number"
-                        min="0"
-                        value={formData.childrenCount}
-                        onChange={(e) =>
-                          handleInputChange("childrenCount", e.target.value)
-                        }
-                        placeholder="Enter number of children"
-                      />
-                    </div>
-                  )}
-                </>
-              )}
             </div>
           </div>
 
           {/* Emergency Contacts */}
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Emergency Contacts
-              </h3>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={addEmergencyContact}
-                disabled={loading}
-              >
-                Add Contact
+              <div className="flex items-center gap-2">
+                <div className="h-4 w-1 bg-orange-500 rounded-full" />
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Emergency Contacts</h3>
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={addEmergencyContact} disabled={loading} className="h-7 text-xs px-3">
+                + Add Contact
               </Button>
             </div>
-
-            <div className="space-y-3">
+            <div className="space-y-2">
               {formData.emergencyContacts.map((contact, index) => (
                 <div key={index} className="flex items-center gap-2">
+                  <span className="text-xs text-gray-400 w-16 flex-shrink-0">Contact {index + 1}</span>
                   <Input
                     value={contact}
-                    onChange={(e) =>
-                      handleEmergencyContactChange(index, e.target.value)
-                    }
-                    placeholder={`Emergency contact ${index + 1}`}
+                    onChange={(e) => handleEmergencyContactChange(index, e.target.value)}
+                    placeholder="Name & phone number"
                     className="flex-1"
                   />
                   {formData.emergencyContacts.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => removeEmergencyContact(index)}
-                      disabled={loading}
-                    >
+                    <Button type="button" variant="ghost" size="sm" onClick={() => removeEmergencyContact(index)} disabled={loading} className="h-9 w-9 p-0 text-gray-400 hover:text-red-500">
                       <X className="w-4 h-4" />
                     </Button>
                   )}
@@ -626,39 +456,75 @@ export default function EditPersonnelModal({
             </div>
           </div>
 
-          {/* Form Actions */}
-          <div className="flex items-center justify-end gap-3 pt-6 border-t">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={loading}
-            >
+          {/* Family Information */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="h-4 w-1 bg-rose-500 rounded-full" />
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Family Information</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-gray-600">Marital Status</Label>
+                <Select value={formData.maritalStatus} onValueChange={(v) => handleInputChange("maritalStatus", v)}>
+                  <SelectTrigger><SelectValue placeholder="Select marital status" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Single">Single</SelectItem>
+                    <SelectItem value="Married">Married</SelectItem>
+                    <SelectItem value="Divorced">Divorced</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {formData.maritalStatus === "Married" && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-gray-600">Spouse Name</Label>
+                  <Input
+                    placeholder="Enter spouse name"
+                    value={formData.spouse}
+                    onChange={(e) => handleInputChange("spouse", e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+            {formData.maritalStatus === "Divorced" && (
+              <div className="grid grid-cols-2 gap-3 items-end">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-gray-600">Number of Children</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    disabled={formData.noChildren}
+                    placeholder="Enter number"
+                    value={formData.childrenCount}
+                    onChange={(e) => handleInputChange("childrenCount", e.target.value)}
+                  />
+                </div>
+                <div className="flex items-center gap-2 pb-0.5">
+                  <input
+                    type="checkbox"
+                    id="noChildren"
+                    checked={formData.noChildren}
+                    onChange={(e) => handleInputChange("noChildren", e.target.checked)}
+                    className="w-4 h-4 rounded border-gray-300"
+                  />
+                  <Label htmlFor="noChildren" className="text-sm text-gray-600 cursor-pointer">No children</Label>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
               Cancel
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={resetForm}
-              disabled={loading}
-            >
+            <Button type="button" variant="outline" onClick={resetForm} disabled={loading}>
               Reset
             </Button>
-            <Button
-              type="submit"
-              disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
+            <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white gap-2">
               {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Updating...
-                </>
+                <><Loader2 className="w-4 h-4 animate-spin" />Updating...</>
               ) : (
-                <>
-                  <Edit className="mr-2 h-4 w-4" />
-                  Update Personnel
-                </>
+                <><Edit className="w-4 h-4" />Update Personnel</>
               )}
             </Button>
           </div>

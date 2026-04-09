@@ -38,6 +38,7 @@ import ViewPersonnelModal from "@/components/modals/ViewPersonnelModal";
 import EditPersonnelModal from "@/components/modals/EditPersonnelModal";
 import UpdatePersonnelStatusModal from "@/components/modals/UpdatePersonnelStatusModal";
 import { AssignDutyModal } from "@/components/modals/AssignDutyModal";
+import { formatRank } from "@/lib/utils";
 import ComposeMessageModal from "@/components/modals/ComposeMessageModal";
 
 import PersonnelFilters, {
@@ -527,8 +528,8 @@ const [composeOpen, setComposeOpen] = useState(false);
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 capitalize font-medium">
-                        {person.rank}
+                      <div className="text-sm text-gray-900 font-medium">
+                        {formatRank(person.rank)}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">

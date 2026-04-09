@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { formatRank } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Dialog,
@@ -137,7 +138,7 @@ export default function ViewPersonnelModal({
                   <Shield className="w-5 h-5 text-blue-600" />
                   <div>
                     <p className="text-sm font-medium text-gray-700">Rank</p>
-                    <p className="text-gray-900 capitalize font-semibold">{personnel.rank}</p>
+                    <p className="text-gray-900 font-semibold">{formatRank(personnel.rank)}</p>
                   </div>
                 </div>
                 
