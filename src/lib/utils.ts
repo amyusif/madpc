@@ -24,3 +24,14 @@ const RANK_LABELS: Record<string, string> = {
 export function formatRank(rank: string): string {
   return RANK_LABELS[rank] ?? rank.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
+
+const SN_RANKS = ["constable", "lance_corporal", "corporal", "sergeant"];
+const PN_RANKS = ["inspector", "chief_inspector"];
+const PO_RANKS = ["assistant_superintendent", "deputy_superintendent", "superintendent", "chief_superintendent", "assistant_commissioner", "deputy_commissioner", "commissioner"];
+
+export function getRankIdType(rank: string): "sn" | "pn" | "po" | null {
+  if (SN_RANKS.includes(rank)) return "sn";
+  if (PN_RANKS.includes(rank)) return "pn";
+  if (PO_RANKS.includes(rank)) return "po";
+  return null;
+}

@@ -21,6 +21,7 @@ import { useAppData } from "@/hooks/useAppData";
 import { useAutoRefresh } from "@/hooks/useRefresh";
 import { Loader2, Edit, X } from "lucide-react";
 import type { Personnel } from "@/integrations/database";
+import { getRankIdType } from "@/lib/utils";
 
 interface EditPersonnelModalProps {
   open: boolean;
@@ -154,29 +155,35 @@ export default function EditPersonnelModal({
       setLoading(true);
 
       // Validate required fields
+      const idType = getRankIdType(formData.rank);
+      const hasRequiredId =
+        (idType === "sn" && !!formData.serviceNumber) ||
+        (idType === "pn" && !!formData.pinNumber) ||
+        (idType === "po" && !!formData.policeOfficeNumber);
       if (
-        !formData.serviceNumber ||
-        !formData.pinNumber ||
-        !formData.policeOfficeNumber ||
+        !formData.rank ||
+        !hasRequiredId ||
         !formData.firstName ||
         !formData.lastName ||
         !formData.email ||
-        !formData.rank ||
         !formData.unit
       ) {
         toast({
           title: "❌ Validation Error",
-          description: "Please fill in all required fields including SN, PN, and PO.",
+          description: "Please fill in all required fields including the ID number for the selected rank.",
           variant: "destructive",
         });
         return;
       }
 
+      const activeId = idType === "sn" ? formData.serviceNumber
+        : idType === "pn" ? formData.pinNumber
+        : formData.policeOfficeNumber;
       const personnelData = {
-        badge_number: formData.serviceNumber,
-        service_number: formData.serviceNumber,
-        pin_number: formData.pinNumber,
-        police_office_number: formData.policeOfficeNumber,
+        badge_number: activeId,
+        service_number: idType === "sn" ? formData.serviceNumber : undefined,
+        pin_number: idType === "pn" ? formData.pinNumber : undefined,
+        police_office_number: idType === "po" ? formData.policeOfficeNumber : undefined,
         first_name: formData.firstName,
         last_name: formData.lastName,
         email: formData.email,
@@ -270,39 +277,80 @@ export default function EditPersonnelModal({
 
         <form onSubmit={handleSubmit} className="space-y-5 pt-2">
 
-          {/* Identification Numbers */}
+          {/* Rank & Identification */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <div className="h-4 w-1 bg-blue-600 rounded-full" />
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Identification Numbers</h3>
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Rank & Identification</h3>
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3 items-start">
               <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-gray-600">SN – Service Number <span className="text-red-500">*</span></Label>
-                <Input
-                  placeholder="e.g. SN/1234"
-                  value={formData.serviceNumber}
-                  onChange={(e) => handleInputChange("serviceNumber", e.target.value)}
-                  required
-                />
+                <Label className="text-xs font-medium text-gray-600">Rank <span className="text-red-500">*</span></Label>
+                <Select
+                  value={formData.rank}
+                  onValueChange={(v) => setFormData(prev => ({ ...prev, rank: v, serviceNumber: "", pinNumber: "", policeOfficeNumber: "" }))}
+                >
+                  <SelectTrigger><SelectValue placeholder="Select rank" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="constable">Constable</SelectItem>
+                    <SelectItem value="lance_corporal">Lance Corporal</SelectItem>
+                    <SelectItem value="corporal">Corporal</SelectItem>
+                    <SelectItem value="sergeant">Sergeant</SelectItem>
+                    <SelectItem value="inspector">Inspector</SelectItem>
+                    <SelectItem value="chief_inspector">Chief Inspector</SelectItem>
+                    <SelectItem value="assistant_superintendent">Assistant Superintendent</SelectItem>
+                    <SelectItem value="deputy_superintendent">Deputy Superintendent</SelectItem>
+                    <SelectItem value="superintendent">Superintendent</SelectItem>
+                    <SelectItem value="chief_superintendent">Chief Superintendent</SelectItem>
+                    <SelectItem value="assistant_commissioner">Assistant Commissioner</SelectItem>
+                    <SelectItem value="deputy_commissioner">Deputy Commissioner</SelectItem>
+                    <SelectItem value="commissioner">Commissioner</SelectItem>
+                  </SelectContent>
+                </Select>
+                {formData.rank && (
+                  <p className="text-xs text-blue-600">
+                    {getRankIdType(formData.rank) === "sn" && "↳ Requires Service Number (SN)"}
+                    {getRankIdType(formData.rank) === "pn" && "↳ Requires Pin Number (PN)"}
+                    {getRankIdType(formData.rank) === "po" && "↳ Requires Police Office No. (PO)"}
+                  </p>
+                )}
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-gray-600">PN – Pin Number <span className="text-red-500">*</span></Label>
-                <Input
-                  placeholder="e.g. PN/5678"
-                  value={formData.pinNumber}
-                  onChange={(e) => handleInputChange("pinNumber", e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-gray-600">PO – Police Office No. <span className="text-red-500">*</span></Label>
-                <Input
-                  placeholder="e.g. PO/9012"
-                  value={formData.policeOfficeNumber}
-                  onChange={(e) => handleInputChange("policeOfficeNumber", e.target.value)}
-                  required
-                />
+                {!formData.rank ? (
+                  <div className="flex items-center justify-center h-[74px] rounded-lg border border-dashed border-gray-200 bg-gray-50">
+                    <p className="text-xs text-gray-400 text-center">Select a rank first</p>
+                  </div>
+                ) : getRankIdType(formData.rank) === "sn" ? (
+                  <>
+                    <Label className="text-xs font-medium text-gray-600">SN – Service Number <span className="text-red-500">*</span></Label>
+                    <Input
+                      placeholder="e.g. SN/1234"
+                      value={formData.serviceNumber}
+                      onChange={(e) => handleInputChange("serviceNumber", e.target.value)}
+                      required
+                    />
+                  </>
+                ) : getRankIdType(formData.rank) === "pn" ? (
+                  <>
+                    <Label className="text-xs font-medium text-gray-600">PN – Pin Number <span className="text-red-500">*</span></Label>
+                    <Input
+                      placeholder="e.g. PN/5678"
+                      value={formData.pinNumber}
+                      onChange={(e) => handleInputChange("pinNumber", e.target.value)}
+                      required
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Label className="text-xs font-medium text-gray-600">PO – Police Office No. <span className="text-red-500">*</span></Label>
+                    <Input
+                      placeholder="e.g. PO/9012"
+                      value={formData.policeOfficeNumber}
+                      onChange={(e) => handleInputChange("policeOfficeNumber", e.target.value)}
+                      required
+                    />
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -333,27 +381,6 @@ export default function EditPersonnelModal({
                   onChange={(e) => handleInputChange("lastName", e.target.value)}
                   required
                 />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-gray-600">Rank <span className="text-red-500">*</span></Label>
-                <Select value={formData.rank} onValueChange={(v) => handleInputChange("rank", v)}>
-                  <SelectTrigger><SelectValue placeholder="Select rank" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="constable">Constable</SelectItem>
-                    <SelectItem value="lance_corporal">Lance Corporal</SelectItem>
-                    <SelectItem value="corporal">Corporal</SelectItem>
-                    <SelectItem value="sergeant">Sergeant</SelectItem>
-                    <SelectItem value="inspector">Inspector</SelectItem>
-                    <SelectItem value="chief_inspector">Chief Inspector</SelectItem>
-                    <SelectItem value="assistant_superintendent">Assistant Superintendent</SelectItem>
-                    <SelectItem value="deputy_superintendent">Deputy Superintendent</SelectItem>
-                    <SelectItem value="superintendent">Superintendent</SelectItem>
-                    <SelectItem value="chief_superintendent">Chief Superintendent</SelectItem>
-                    <SelectItem value="assistant_commissioner">Assistant Commissioner</SelectItem>
-                    <SelectItem value="deputy_commissioner">Deputy Commissioner</SelectItem>
-                    <SelectItem value="commissioner">Commissioner</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium text-gray-600">Unit <span className="text-red-500">*</span></Label>
