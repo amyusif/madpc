@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   BarChart3,
   Calendar,
+  CalendarDays,
   FileText,
   Home,
   MessageSquare,
@@ -23,6 +24,7 @@ const menuItems = [
   { title: "Personnel", url: "/personnel", icon: Users },
   { title: "Cases", url: "/cases", icon: FileText },
   { title: "Duties", url: "/duties", icon: Calendar },
+  { title: "Leave", url: "/leave", icon: CalendarDays },
   { title: "Communication", url: "/communication", icon: MessageSquare },
   { title: "Reports", url: "/reports", icon: BarChart3 },
   { title: "Settings", url: "/settings", icon: Settings },

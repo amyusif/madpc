@@ -4,13 +4,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -35,6 +28,8 @@ export interface PersonnelFilters {
   status: string[];
   rank: string[];
   unit: string[];
+  department: string[];
+  group: string[];
   dateJoinedFrom: string;
   dateJoinedTo: string;
   maritalStatus: string[];
@@ -95,6 +90,9 @@ const unitOptions = [
   "special operations",
 ];
 
+const departmentOptions = ["Headquaters", "Police station"];
+const groupOptions = ["Administration Staff", "CID", "Accident Squad"];
+
 const maritalStatusOptions = [
   "Single",
   "Married",
@@ -129,6 +127,8 @@ export default function PersonnelFilters({
       status: [],
       rank: [],
       unit: [],
+      department: [],
+      group: [],
       dateJoinedFrom: "",
       dateJoinedTo: "",
       maritalStatus: [],
@@ -296,6 +296,80 @@ export default function PersonnelFilters({
                 </div>
               </div>
 
+              {/* Department Filter */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium flex items-center gap-2">
+                    <MapPin className="w-4 h-4" />
+                    Department
+                  </Label>
+                  {filters.department.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => clearFilter("department")}
+                      className="text-xs h-6 px-2"
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {departmentOptions.map((department) => (
+                    <Badge
+                      key={department}
+                      variant={
+                        filters.department.includes(department) ? "default" : "outline"
+                      }
+                      className={`cursor-pointer transition-colors ${
+                        filters.department.includes(department)
+                          ? "bg-blue-600 text-white"
+                          : "hover:bg-gray-100"
+                      }`}
+                      onClick={() => toggleArrayFilter("department", department)}
+                    >
+                      {department}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              {/* Group Filter */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    Group
+                  </Label>
+                  {filters.group.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => clearFilter("group")}
+                      className="text-xs h-6 px-2"
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {groupOptions.map((group) => (
+                    <Badge
+                      key={group}
+                      variant={filters.group.includes(group) ? "default" : "outline"}
+                      className={`cursor-pointer transition-colors ${
+                        filters.group.includes(group)
+                          ? "bg-blue-600 text-white"
+                          : "hover:bg-gray-100"
+                      }`}
+                      onClick={() => toggleArrayFilter("group", group)}
+                    >
+                      {group}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
               {/* Marital Status Filter */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -413,6 +487,32 @@ export default function PersonnelFilters({
               <X
                 className="w-3 h-3 cursor-pointer"
                 onClick={() => toggleArrayFilter("unit", unit)}
+              />
+            </Badge>
+          ))}
+          {filters.department.map((department) => (
+            <Badge
+              key={`department-${department}`}
+              variant="secondary"
+              className="text-xs gap-1"
+            >
+              Department: {department}
+              <X
+                className="w-3 h-3 cursor-pointer"
+                onClick={() => toggleArrayFilter("department", department)}
+              />
+            </Badge>
+          ))}
+          {filters.group.map((group) => (
+            <Badge
+              key={`group-${group}`}
+              variant="secondary"
+              className="text-xs gap-1"
+            >
+              Group: {group}
+              <X
+                className="w-3 h-3 cursor-pointer"
+                onClick={() => toggleArrayFilter("group", group)}
               />
             </Badge>
           ))}

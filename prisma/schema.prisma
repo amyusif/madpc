@@ -44,33 +44,59 @@ enum UserRole {
   user
 }
 
+enum LeaveType {
+  annual
+  sick
+  casual
+  compassionate
+  maternity
+  paternity
+  study
+  unpaid
+}
+
+enum LeaveStatus {
+  pending
+  approved
+  rejected
+  cancelled
+}
+
 model Personnel {
   id                 String          @id @default(cuid())
   badge_number       String          @unique
   service_number     String?         @unique
   pin_number         String?         @unique
   police_office_number String?       @unique
+  gender             String?
   first_name         String
   last_name          String
   email              String          @unique
   phone              String?
   rank               String
   unit               String
-  date_joined        String
-  emergency_contacts String[]
-  marital_status     String
-  spouse             String?
-  children_count     Int?
-  no_children        Boolean         @default(false)
-  status             PersonnelStatus @default(active)
-  photo_url          String?
-  password_hash      String?
-  created_at         DateTime        @default(now())
-  updated_at         DateTime        @updatedAt
+  department         String?
+  group              String?
+  date_joined              String
+  emergency_contacts       String[]
+  marital_status           String
+  spouse                   String?
+  children_count           Int?
+  no_children              Boolean         @default(false)
+  status                   PersonnelStatus @default(active)
+  photo_url                String?
+  password_hash            String?
+  date_to_region           String?
+  date_to_station          String?
+  date_of_last_promotion   String?
+  remarks                  String?
+  created_at               DateTime        @default(now())
+  updated_at               DateTime        @updatedAt
 
   duties              Duty[]
   message_recipients  MessageRecipient[]
   circular_recipients CircularRecipient[]
+  leave_requests      LeaveRequest[]
 }
 
 model Case {
@@ -171,4 +197,25 @@ model User {
   lastLoginAt DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  reviewed_leave_requests LeaveRequest[] @relation("LeaveReviewedBy")
+}
+
+model LeaveRequest {
+  id                  String      @id @default(cuid())
+  personnel_id        String
+  leave_type          LeaveType
+  start_date          String
+  end_date            String
+  days_requested      Int
+  reason              String
+  status              LeaveStatus @default(pending)
+  admin_note          String?
+  reviewed_by_user_id String?
+  reviewed_at         DateTime?
+  created_at          DateTime    @default(now())
+  updated_at          DateTime    @updatedAt
+
+  personnel   Personnel @relation(fields: [personnel_id], references: [id], onDelete: Cascade)
+  reviewed_by User?     @relation("LeaveReviewedBy", fields: [reviewed_by_user_id], references: [id], onDelete: SetNull)
 }

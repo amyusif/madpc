@@ -19,6 +19,7 @@ import {
   FileCheck,
   MapPin,
   Shield,
+  CalendarDays,
 } from "lucide-react";
 import { useAppData } from "@/hooks/useAppData";
 import { useToast } from "@/hooks/use-toast";
@@ -43,6 +44,7 @@ export default function Dashboard() {
   const [recentMessages, setRecentMessages] = useState<any[]>([]);
   const [recentCirculars, setRecentCirculars] = useState<any[]>([]);
   const [communicationLoading, setCommunicationLoading] = useState(false);
+  const [leaveCount, setLeaveCount] = useState(0);
 
   // Get recent cases (last 5)
   const recentCases = cases.slice(0, 5);
@@ -74,8 +76,20 @@ export default function Dashboard() {
     }
   };
 
+  const loadLeaveCount = async () => {
+    try {
+      const leaveRes = await fetch("/api/leave");
+      if (!leaveRes.ok) return;
+      const leaveData = await leaveRes.json();
+      setLeaveCount(Array.isArray(leaveData.data) ? leaveData.data.length : 0);
+    } catch (error) {
+      console.error("Failed to load leave count:", error);
+    }
+  };
+
   useEffect(() => {
     loadRecentCommunications();
+    loadLeaveCount();
   }, []);
 
   // Handle error display
@@ -178,11 +192,11 @@ export default function Dashboard() {
               variant="orange"
             />
             <StatCard
-              title="Active Alerts"
-              value={stats.activeAlerts.toString()}
-              subtitle="Urgent attention"
-              icon={AlertTriangle}
-              variant="red"
+              title="Leave Requests"
+              value={leaveCount.toString()}
+              subtitle="Submitted requests"
+              icon={CalendarDays}
+              variant="blue"
             />
           </>
         )}

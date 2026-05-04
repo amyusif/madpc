@@ -94,6 +94,7 @@
     "tailwindcss-animate": "^1.0.7",
     "twilio": "^5.8.0",
     "vaul": "^1.1.2",
+    "xlsx": "^0.18.5",
     "zod": "^4.0.14"
   },
   "devDependencies": {

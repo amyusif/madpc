@@ -63,8 +63,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
+
+      // Check content type before parsing JSON
+      const contentType = res.headers.get("content-type");
+      if (!contentType?.includes("application/json")) {
+        const text = await res.text();
+        throw new Error(`Server returned ${res.status}: ${text.substring(0, 100)}`);
+      }
+
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to sign in");
+      if (!res.ok) throw new Error(data.error || data.details || "Failed to sign in");
 
       const u = { id: data.id, email: data.email };
       setUser(u);
@@ -73,6 +81,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const profileRes = await fetch(`/api/profiles/${data.id}`);
       const profileData = await profileRes.json();
       if (profileData.profile) setProfile(profileData.profile);
+    } catch (error) {
+      console.error("Sign in error:", error);
+      throw error;
     } finally {
       setLoading(false);
     }

@@ -8,42 +8,34 @@ export const exportToCSV = (
   filename: string = "personnel"
 ) => {
   const headers = [
-    "Badge Number",
-    "First Name",
-    "Last Name",
-    "Email",
-    "Phone",
+    "S/No.",
+    "Head Count",
+    "Service Number",
+    "Gender",
     "Rank",
-    "Unit",
-    "Status",
-    "Date Joined",
-    "Marital Status",
-    "Spouse",
-    "Children Count",
-    "Emergency Contacts",
-    "Created At",
-    "Updated At",
+    "Name",
+    "Date to Region",
+    "Date to Station",
+    "Date of Last Promotion",
+    "Remarks/ Status",
+    "Contact",
   ];
 
   const csvContent = [
     headers.join(","),
-    ...personnel.map((person) =>
+    ...personnel.map((person, index) =>
       [
-        `"${person.badge_number}"`,
-        `"${person.first_name}"`,
-        `"${person.last_name}"`,
-        `"${person.email}"`,
-        `"${person.phone || ""}"`,
-        `"${person.rank}"`,
-        `"${person.unit}"`,
-        `"${person.status}"`,
-        `"${person.date_joined}"`,
-        `"${person.marital_status}"`,
-        `"${person.spouse || ""}"`,
+        `"${index + 1}"`,
         `"${person.children_count || ""}"`,
-        `"${person.emergency_contacts.join("; ")}"`,
-        `"${new Date(person.created_at).toLocaleString()}"`,
-        `"${new Date(person.updated_at).toLocaleString()}"`,
+        `"${person.service_number || person.badge_number}"`,
+        `""`,
+        `"${person.rank}"`,
+        `"${person.first_name} ${person.last_name}"`,
+        `"${person.date_to_region || ""}"`,
+        `"${person.date_to_station || ""}"`,
+        `"${person.date_of_last_promotion || ""}"`,
+        `"${person.remarks || person.status}"`,
+        `"${person.phone || ""}"`,
       ].join(",")
     ),
   ].join("\n");
@@ -59,42 +51,34 @@ export const exportToExcel = (
   // For a more robust Excel export, you would use a library like xlsx
   // For now, we'll use CSV format which Excel can open
   const headers = [
-    "Badge Number",
-    "First Name",
-    "Last Name",
-    "Email",
-    "Phone",
+    "S/No.",
+    "Head Count",
+    "Service Number",
+    "Gender",
     "Rank",
-    "Unit",
-    "Status",
-    "Date Joined",
-    "Marital Status",
-    "Spouse",
-    "Children Count",
-    "Emergency Contacts",
-    "Created At",
-    "Updated At",
+    "Name",
+    "Date to Region",
+    "Date to Station",
+    "Date of Last Promotion",
+    "Remarks/ Status",
+    "Contact",
   ];
 
   const csvContent = [
     headers.join("\t"), // Use tabs for better Excel compatibility
-    ...personnel.map((person) =>
+    ...personnel.map((person, index) =>
       [
-        person.badge_number,
-        person.first_name,
-        person.last_name,
-        person.email,
-        person.phone || "",
-        person.rank,
-        person.unit,
-        person.status,
-        person.date_joined,
-        person.marital_status,
-        person.spouse || "",
+        index + 1,
         person.children_count || "",
-        person.emergency_contacts.join("; "),
-        new Date(person.created_at).toLocaleString(),
-        new Date(person.updated_at).toLocaleString(),
+        person.service_number || person.badge_number,
+        "",
+        person.rank,
+        `${person.first_name} ${person.last_name}`,
+        person.date_to_region || "",
+        person.date_to_station || "",
+        person.date_of_last_promotion || "",
+        person.remarks || person.status,
+        person.phone || "",
       ].join("\t")
     ),
   ].join("\n");

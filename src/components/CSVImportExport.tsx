@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { FileUpload } from "@/components/ui/file-upload";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -18,7 +18,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
 import {
   Upload,
   Download,
@@ -28,19 +27,6 @@ import {
   Info,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import {
-  STORAGE_BUCKETS,
-  FILE_CONFIGS,
-  type FileUploadResult,
-} from "@/utils/fileStorage";
-
-interface CSVImportExportProps {
-  entityType: "personnel" | "cases" | "duties";
-  onImportComplete?: (data: any[]) => void;
-  onExportRequest?: () => Promise<any[]>;
-  importTemplate?: string;
-  className?: string;
-}
 
 interface ImportResult {
   success: boolean;
@@ -49,6 +35,20 @@ interface ImportResult {
   errorRows: number;
   errors: string[];
 }
+
+interface CSVImportExportProps {
+  entityType: "personnel" | "cases" | "duties";
+  onImportComplete?: (
+    data: any[],
+    options?: { department?: string; group?: string }
+  ) => Promise<Partial<ImportResult> | void> | Partial<ImportResult> | void;
+  onExportRequest?: () => Promise<any[]>;
+  importTemplate?: string;
+  className?: string;
+}
+
+const personnelDepartmentOptions = ["Headquaters", "Police station"];
+const personnelGroupOptions = ["Administration Staff", "CID", "Accident Squad"];
 
 export function CSVImportExport({
   entityType,
@@ -63,6 +63,11 @@ export function CSVImportExport({
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [exportFormat, setExportFormat] = useState<"csv" | "xlsx">("csv");
+  const [personnelDepartment, setPersonnelDepartment] = useState(
+    personnelDepartmentOptions[0]
+  );
+  const [personnelGroup, setPersonnelGroup] = useState(personnelGroupOptions[0]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const entityLabels = {
@@ -72,25 +77,56 @@ export function CSVImportExport({
   };
 
   const parseCSV = (csvText: string): any[] => {
-    const lines = csvText.split("\n");
-    const headers = lines[0].split(",").map(h => h.trim().replace(/"/g, ""));
-    const data = [];
+    const rows: string[][] = [];
+    let currentCell = "";
+    let currentRow: string[] = [];
+    let inQuotes = false;
 
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line) continue;
+    for (let index = 0; index < csvText.length; index++) {
+      const char = csvText[index];
+      const next = csvText[index + 1];
 
-      const values = line.split(",").map(v => v.trim().replace(/"/g, ""));
+      if (char === '"' && inQuotes && next === '"') {
+        currentCell += '"';
+        index++;
+        continue;
+      }
+
+      if (char === '"') {
+        inQuotes = !inQuotes;
+        continue;
+      }
+
+      if (char === "," && !inQuotes) {
+        currentRow.push(currentCell.trim());
+        currentCell = "";
+        continue;
+      }
+
+      if ((char === "\n" || char === "\r") && !inQuotes) {
+        if (char === "\r" && next === "\n") index++;
+        currentRow.push(currentCell.trim());
+        if (currentRow.some((cell) => cell !== "")) rows.push(currentRow);
+        currentRow = [];
+        currentCell = "";
+        continue;
+      }
+
+      currentCell += char;
+    }
+
+    currentRow.push(currentCell.trim());
+    if (currentRow.some((cell) => cell !== "")) rows.push(currentRow);
+    if (rows.length < 2) return [];
+
+    const headers = rows[0].map((header) => header.trim());
+    return rows.slice(1).map((values) => {
       const row: any = {};
-      
       headers.forEach((header, index) => {
         row[header] = values[index] || "";
       });
-      
-      data.push(row);
-    }
-
-    return data;
+      return row;
+    });
   };
 
   const validateImportData = (data: any[]): { valid: any[]; errors: string[] } => {
@@ -99,16 +135,15 @@ export function CSVImportExport({
 
     for (let i = 0; i < data.length; i++) {
       const row = data[i];
-      const rowNumber = i + 2; // +2 because of header and 0-based index
+      const rowNumber = i + 2;
 
-      // Basic validation based on entity type
       if (entityType === "personnel") {
-        if (!row.badge_number || !row.full_name) {
-          errors.push(`Row ${rowNumber}: Badge number and full name are required`);
-          continue;
-        }
+        valid.push(row);
+        continue;
       } else if (entityType === "cases") {
-        if (!row.case_number || !row.title) {
+        const caseNumber = row.case_number || row["Case Number"];
+        const title = row.case_title || row["Case Title"] || row.title || row.Title;
+        if (!caseNumber || !title) {
           errors.push(`Row ${rowNumber}: Case number and title are required`);
           continue;
         }
@@ -125,11 +160,19 @@ export function CSVImportExport({
     return { valid, errors };
   };
 
-  const handleImportComplete = async (result: FileUploadResult) => {
-    if (!result.success || !result.url) {
+  const resetImport = () => {
+    setImportResult(null);
+    setImportProgress(0);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleImportFile = async (file?: File) => {
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith(".csv")) {
       toast({
-        title: "Upload Failed",
-        description: result.error || "Failed to upload CSV file",
+        title: "Invalid File",
+        description: "Please choose a CSV file.",
         variant: "destructive",
       });
       return;
@@ -139,46 +182,49 @@ export function CSVImportExport({
     setImportProgress(0);
 
     try {
-      // Fetch and parse CSV file
-      const response = await fetch(result.url);
-      const csvText = await response.text();
+      const csvText = await file.text();
       const parsedData = parseCSV(csvText);
 
       setImportProgress(30);
 
-      // Validate data
       const { valid, errors } = validateImportData(parsedData);
 
       setImportProgress(60);
 
-      // Process valid data
+      let handlerResult: Partial<ImportResult> | void = undefined;
       if (valid.length > 0) {
-        await onImportComplete?.(valid);
+        handlerResult = await onImportComplete?.(
+          valid,
+          entityType === "personnel"
+            ? { department: personnelDepartment, group: personnelGroup }
+            : undefined
+        );
       }
 
       setImportProgress(100);
 
-      const importResult: ImportResult = {
-        success: true,
+      const allErrors = [...errors, ...(handlerResult?.errors ?? [])];
+      const result: ImportResult = {
+        success: allErrors.length === 0,
         totalRows: parsedData.length,
-        successRows: valid.length,
-        errorRows: errors.length,
-        errors,
+        successRows: handlerResult?.successRows ?? valid.length,
+        errorRows: allErrors.length,
+        errors: allErrors,
       };
 
-      setImportResult(importResult);
+      setImportResult(result);
 
-      if (errors.length === 0) {
+      if (allErrors.length === 0) {
         toast({
-          title: "✅ Import Successful",
-          description: `Successfully imported ${valid.length} ${entityType} records`,
+          title: "Import Successful",
+          description: `Successfully imported ${result.successRows} ${entityType} records`,
           duration: 5000,
         });
       } else {
         toast({
-          title: "⚠️ Import Completed with Errors",
-          description: `Imported ${valid.length} records, ${errors.length} errors`,
-          variant: "destructive",
+          title: "Import Completed with Errors",
+          description: `Imported ${result.successRows} records, ${result.errorRows} errors`,
+          variant: result.successRows === 0 ? "destructive" : "default",
           duration: 5000,
         });
       }
@@ -187,7 +233,7 @@ export function CSVImportExport({
         success: false,
         totalRows: 0,
         successRows: 0,
-        errorRows: 0,
+        errorRows: 1,
         errors: [error instanceof Error ? error.message : "Import failed"],
       });
 
@@ -208,7 +254,7 @@ export function CSVImportExport({
 
     try {
       const data = await onExportRequest();
-      
+
       if (data.length === 0) {
         toast({
           title: "No Data",
@@ -218,34 +264,34 @@ export function CSVImportExport({
         return;
       }
 
-      // Convert data to CSV
       const headers = Object.keys(data[0]);
       const csvContent = [
         headers.join(","),
-        ...data.map(row => 
-          headers.map(header => `"${row[header] || ""}"`).join(",")
-        )
+        ...data.map((row) =>
+          headers
+            .map((header) => `"${String(row[header] ?? "").replace(/"/g, '""')}"`)
+            .join(",")
+        ),
       ].join("\n");
 
-      // Create and download file
       const blob = new Blob([csvContent], { type: "text/csv" });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${entityType}_export_${new Date().toISOString().split("T")[0]}.${exportFormat}`;
+      link.download = `${entityType}_export_${new Date().toISOString().split("T")[0]}.csv`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
 
       toast({
-        title: "✅ Export Successful",
+        title: "Export Successful",
         description: `Exported ${data.length} ${entityType} records`,
         duration: 3000,
       });
 
       setIsExportDialogOpen(false);
-    } catch (error) {
+    } catch {
       toast({
         title: "Export Failed",
         description: "Failed to export data",
@@ -258,7 +304,7 @@ export function CSVImportExport({
 
   const downloadTemplate = () => {
     if (!importTemplate) return;
-    
+
     const blob = new Blob([importTemplate], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -272,8 +318,13 @@ export function CSVImportExport({
 
   return (
     <div className={`flex gap-2 ${className}`}>
-      {/* Import Dialog */}
-      <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+      <Dialog
+        open={isImportDialogOpen}
+        onOpenChange={(open) => {
+          setIsImportDialogOpen(open);
+          if (!open) resetImport();
+        }}
+      >
         <DialogTrigger asChild>
           <Button variant="outline" size="sm">
             <Upload className="w-4 h-4 mr-2" />
@@ -295,13 +346,9 @@ export function CSVImportExport({
                       Download Template
                     </p>
                     <p className="text-sm text-blue-700 mb-2">
-                      Use our template to ensure proper formatting
+                      Use the template to ensure proper formatting.
                     </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={downloadTemplate}
-                    >
+                    <Button variant="outline" size="sm" onClick={downloadTemplate}>
                       <FileSpreadsheet className="w-4 h-4 mr-2" />
                       Download Template
                     </Button>
@@ -311,22 +358,70 @@ export function CSVImportExport({
             )}
 
             {!isProcessing && !importResult && (
-              <FileUpload
-                bucket={STORAGE_BUCKETS.IMPORTS}
-                folder={entityType}
-                config={FILE_CONFIGS.SPREADSHEETS}
-                onUploadComplete={handleImportComplete}
-                onError={(error) => {
-                  toast({
-                    title: "Upload Error",
-                    description: error,
-                    variant: "destructive",
-                  });
-                }}
-                placeholder="Upload CSV file"
-                accept=".csv"
-                showPreview={false}
-              />
+              <div className="space-y-4">
+                {entityType === "personnel" && (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Department</Label>
+                      <Select
+                        value={personnelDepartment}
+                        onValueChange={setPersonnelDepartment}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {personnelDepartmentOptions.map((department) => (
+                            <SelectItem key={department} value={department}>
+                              {department}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Group</Label>
+                      <Select value={personnelGroup} onValueChange={setPersonnelGroup}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {personnelGroupOptions.map((group) => (
+                            <SelectItem key={group} value={group}>
+                              {group}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+
+                <div
+                  className="flex cursor-pointer flex-col items-center gap-3 rounded-lg border-2 border-dashed border-gray-300 p-8 text-center transition-colors hover:border-blue-400 hover:bg-blue-50"
+                  onClick={() => fileInputRef.current?.click()}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    handleImportFile(event.dataTransfer.files[0]);
+                  }}
+                  onDragOver={(event) => event.preventDefault()}
+                >
+                  <Upload className="h-8 w-8 text-gray-400" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">
+                      Drop a CSV file here or click to browse
+                    </p>
+                    <p className="text-xs text-gray-500">Only .csv files are supported</p>
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".csv,text/csv"
+                    className="hidden"
+                    onChange={(event) => handleImportFile(event.target.files?.[0])}
+                  />
+                </div>
+              </div>
             )}
 
             {isProcessing && (
@@ -348,7 +443,7 @@ export function CSVImportExport({
                     <AlertCircle className="w-5 h-5 text-red-500" />
                   )}
                   <span className="text-sm font-medium">
-                    Import {importResult.success ? "Completed" : "Failed"}
+                    Import {importResult.success ? "Completed" : "Completed with Errors"}
                   </span>
                 </div>
 
@@ -358,11 +453,15 @@ export function CSVImportExport({
                     <div className="text-gray-500">Total</div>
                   </div>
                   <div className="text-center p-2 bg-green-50 rounded">
-                    <div className="font-medium text-green-600">{importResult.successRows}</div>
+                    <div className="font-medium text-green-600">
+                      {importResult.successRows}
+                    </div>
                     <div className="text-gray-500">Success</div>
                   </div>
                   <div className="text-center p-2 bg-red-50 rounded">
-                    <div className="font-medium text-red-600">{importResult.errorRows}</div>
+                    <div className="font-medium text-red-600">
+                      {importResult.errorRows}
+                    </div>
                     <div className="text-gray-500">Errors</div>
                   </div>
                 </div>
@@ -380,7 +479,7 @@ export function CSVImportExport({
 
                 <Button
                   onClick={() => {
-                    setImportResult(null);
+                    resetImport();
                     setIsImportDialogOpen(false);
                   }}
                   className="w-full"
@@ -393,7 +492,6 @@ export function CSVImportExport({
         </DialogContent>
       </Dialog>
 
-      {/* Export Dialog */}
       {onExportRequest && (
         <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
           <DialogTrigger asChild>
@@ -410,7 +508,10 @@ export function CSVImportExport({
             <div className="space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Export Format</label>
-                <Select value={exportFormat} onValueChange={(value: "csv" | "xlsx") => setExportFormat(value)}>
+                <Select
+                  value={exportFormat}
+                  onValueChange={(value: "csv" | "xlsx") => setExportFormat(value)}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>

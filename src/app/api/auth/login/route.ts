@@ -6,13 +6,23 @@ import { prisma } from "@/lib/prisma";
 
 // Accepts identifier (email or badge_number) in the "email" field for backward compatibility
 export async function POST(req: NextRequest) {
-  const { email, password } = await req.json();
-
-  if (!email || !password) {
-    return NextResponse.json({ error: "Email/Username and password are required" }, { status: 400 });
-  }
-
   try {
+    let body: any;
+    try {
+      body = await req.json();
+    } catch (jsonError) {
+      return NextResponse.json(
+        { error: "Invalid JSON in request body", details: jsonError instanceof Error ? jsonError.message : "Unknown error" },
+        { status: 400 }
+      );
+    }
+
+    const { email, password } = body;
+
+    if (!email || !password) {
+      return NextResponse.json({ error: "Email/Username and password are required" }, { status: 400 });
+    }
+
     const identifier = email.trim();
 
     // 1. Check User table first (admin/system accounts with username/password)
@@ -90,8 +100,13 @@ export async function POST(req: NextRequest) {
       role: profile.rank || "officer",
     });
   } catch (error) {
-    console.error("Login error:", error);
-    return NextResponse.json({ error: "Authentication failed" }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("Login error details:", {
+      message: errorMessage,
+      stack: error instanceof Error ? error.stack : undefined,
+      timestamp: new Date().toISOString(),
+    });
+    return NextResponse.json({ error: "Authentication failed", details: errorMessage }, { status: 500 });
   }
 }
 

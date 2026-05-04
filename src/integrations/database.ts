@@ -51,12 +51,15 @@ export const db = {
         service_number: (personnel as any).service_number ?? null,
         pin_number: (personnel as any).pin_number ?? null,
         police_office_number: (personnel as any).police_office_number ?? null,
+        gender: personnel.gender ?? null,
         first_name: personnel.first_name,
         last_name: personnel.last_name,
         email: personnel.email,
         phone: personnel.phone ?? null,
         rank: personnel.rank,
         unit: personnel.unit,
+        department: personnel.department ?? null,
+        group: personnel.group ?? null,
         date_joined: personnel.date_joined,
         emergency_contacts: personnel.emergency_contacts ?? [],
         marital_status: personnel.marital_status,
@@ -66,6 +69,10 @@ export const db = {
         status: personnel.status as any,
         photo_url: personnel.photo_url ?? null,
         password_hash: (personnel as any).password_hash ?? null,
+        date_to_region: personnel.date_to_region ?? null,
+        date_to_station: personnel.date_to_station ?? null,
+        date_of_last_promotion: personnel.date_of_last_promotion ?? null,
+        remarks: personnel.remarks ?? null,
       },
     });
     return serializePersonnel(row);
@@ -89,12 +96,15 @@ export const db = {
         ...((personnel as any).service_number !== undefined && { service_number: (personnel as any).service_number }),
         ...((personnel as any).pin_number !== undefined && { pin_number: (personnel as any).pin_number }),
         ...((personnel as any).police_office_number !== undefined && { police_office_number: (personnel as any).police_office_number }),
+        ...(personnel.gender !== undefined && { gender: personnel.gender }),
         ...(personnel.first_name !== undefined && { first_name: personnel.first_name }),
         ...(personnel.last_name !== undefined && { last_name: personnel.last_name }),
         ...(personnel.email !== undefined && { email: personnel.email }),
         ...(personnel.phone !== undefined && { phone: personnel.phone }),
         ...(personnel.rank !== undefined && { rank: personnel.rank }),
         ...(personnel.unit !== undefined && { unit: personnel.unit }),
+        ...(personnel.department !== undefined && { department: personnel.department }),
+        ...(personnel.group !== undefined && { group: personnel.group }),
         ...(personnel.date_joined !== undefined && { date_joined: personnel.date_joined }),
         ...(personnel.emergency_contacts !== undefined && { emergency_contacts: personnel.emergency_contacts }),
         ...(personnel.marital_status !== undefined && { marital_status: personnel.marital_status }),
@@ -104,6 +114,10 @@ export const db = {
         ...(personnel.status !== undefined && { status: personnel.status as any }),
         ...(personnel.photo_url !== undefined && { photo_url: personnel.photo_url }),
         ...((personnel as any).password_hash !== undefined && { password_hash: (personnel as any).password_hash }),
+        ...(personnel.date_to_region !== undefined && { date_to_region: personnel.date_to_region }),
+        ...(personnel.date_to_station !== undefined && { date_to_station: personnel.date_to_station }),
+        ...(personnel.date_of_last_promotion !== undefined && { date_of_last_promotion: personnel.date_of_last_promotion }),
+        ...(personnel.remarks !== undefined && { remarks: personnel.remarks }),
       },
     });
     return serializePersonnel(row);
@@ -245,6 +259,140 @@ export const db = {
     return { success: true };
   },
 
+  // Leave operations
+  async getLeaveRequests(): Promise<LeaveRequest[]> {
+    if (isBrowser()) {
+      const result = await apiRequest<{ data: LeaveRequest[] }>("/api/leave");
+      return result.data;
+    }
+
+    const prisma = await getPrisma();
+    const rows = await prisma.leaveRequest.findMany({
+      orderBy: { created_at: "desc" },
+      include: {
+        personnel: {
+          select: {
+            id: true,
+            first_name: true,
+            last_name: true,
+            badge_number: true,
+            unit: true,
+            rank: true,
+          },
+        },
+        reviewed_by: {
+          select: {
+            id: true,
+            fullName: true,
+            username: true,
+            role: true,
+          },
+        },
+      },
+    });
+    return rows.map(serializeLeaveRequest);
+  },
+
+  async createLeaveRequest(
+    leaveRequest: Omit<
+      LeaveRequest,
+      | "id"
+      | "status"
+      | "days_requested"
+      | "admin_note"
+      | "reviewed_by_user_id"
+      | "reviewed_at"
+      | "created_at"
+      | "updated_at"
+      | "personnel"
+      | "reviewed_by"
+    >
+  ): Promise<LeaveRequest> {
+    if (isBrowser()) {
+      const result = await apiRequest<{ data: LeaveRequest }>("/api/leave", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(leaveRequest),
+      });
+      return result.data;
+    }
+
+    const prisma = await getPrisma();
+    const start = new Date(`${leaveRequest.start_date}T00:00:00`);
+    const end = new Date(`${leaveRequest.end_date}T00:00:00`);
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const daysRequested = Math.floor((end.getTime() - start.getTime()) / msPerDay) + 1;
+
+    const row = await prisma.leaveRequest.create({
+      data: {
+        personnel_id: leaveRequest.personnel_id,
+        leave_type: leaveRequest.leave_type as any,
+        start_date: leaveRequest.start_date,
+        end_date: leaveRequest.end_date,
+        reason: leaveRequest.reason,
+        days_requested: daysRequested,
+      },
+      include: {
+        personnel: {
+          select: {
+            id: true,
+            first_name: true,
+            last_name: true,
+            badge_number: true,
+            unit: true,
+            rank: true,
+          },
+        },
+      },
+    });
+    return serializeLeaveRequest(row);
+  },
+
+  async reviewLeaveRequest(
+    id: string,
+    review: { status: "approved" | "rejected"; admin_note?: string }
+  ): Promise<LeaveRequest> {
+    if (isBrowser()) {
+      const result = await apiRequest<{ data: LeaveRequest }>(`/api/leave/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(review),
+      });
+      return result.data;
+    }
+
+    const prisma = await getPrisma();
+    const row = await prisma.leaveRequest.update({
+      where: { id },
+      data: {
+        status: review.status as any,
+        admin_note: review.admin_note ?? null,
+        reviewed_at: new Date(),
+      },
+      include: {
+        personnel: {
+          select: {
+            id: true,
+            first_name: true,
+            last_name: true,
+            badge_number: true,
+            unit: true,
+            rank: true,
+          },
+        },
+        reviewed_by: {
+          select: {
+            id: true,
+            fullName: true,
+            username: true,
+            role: true,
+          },
+        },
+      },
+    });
+    return serializeLeaveRequest(row);
+  },
+
   getCurrentBackend() {
     return "Neon (PostgreSQL) via Prisma";
   },
@@ -275,6 +423,15 @@ function serializeDuty(row: any): Duty {
   };
 }
 
+function serializeLeaveRequest(row: any): LeaveRequest {
+  return {
+    ...row,
+    created_at: row.created_at instanceof Date ? row.created_at.toISOString() : row.created_at,
+    updated_at: row.updated_at instanceof Date ? row.updated_at.toISOString() : row.updated_at,
+    reviewed_at: row.reviewed_at instanceof Date ? row.reviewed_at.toISOString() : row.reviewed_at,
+  };
+}
+
 // Export types for convenience
 export interface Personnel {
   id: string;
@@ -282,12 +439,15 @@ export interface Personnel {
   service_number?: string | null;
   pin_number?: string | null;
   police_office_number?: string | null;
+  gender?: string | null;
   first_name: string;
   last_name: string;
   email: string;
   phone?: string;
   rank: string;
   unit: string;
+  department?: string | null;
+  group?: string | null;
   date_joined: string;
   emergency_contacts: string[];
   marital_status: string;
@@ -296,6 +456,10 @@ export interface Personnel {
   no_children?: boolean;
   status: "active" | "inactive" | "suspended" | "retired";
   photo_url?: string | null;
+  date_to_region?: string | null;
+  date_to_station?: string | null;
+  date_of_last_promotion?: string | null;
+  remarks?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -326,4 +490,42 @@ export interface Duty {
   notes?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface LeaveRequest {
+  id: string;
+  personnel_id: string;
+  leave_type:
+    | "annual"
+    | "sick"
+    | "casual"
+    | "compassionate"
+    | "maternity"
+    | "paternity"
+    | "study"
+    | "unpaid";
+  start_date: string;
+  end_date: string;
+  days_requested: number;
+  reason: string;
+  status: "pending" | "approved" | "rejected" | "cancelled";
+  admin_note?: string | null;
+  reviewed_by_user_id?: string | null;
+  reviewed_at?: string | null;
+  created_at: string;
+  updated_at: string;
+  personnel?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    badge_number: string;
+    unit: string;
+    rank: string;
+  };
+  reviewed_by?: {
+    id: string;
+    fullName: string;
+    username: string;
+    role: string;
+  } | null;
 }

@@ -11,6 +11,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -48,6 +55,9 @@ import BulkOperations from "@/components/BulkOperations";
 import { PersonnelRefreshButton } from "@/components/RefreshIndicator";
 import type { Personnel } from "@/integrations/database";
 
+const departmentOptions = ["Headquaters", "Police station"];
+const groupOptions = ["Administration Staff", "CID", "Accident Squad"];
+
 interface PersonnelListProps {
   onAddPersonnel: () => void;
   showHeader?: boolean;
@@ -81,6 +91,8 @@ const [composeOpen, setComposeOpen] = useState(false);
     status: [],
     rank: [],
     unit: [],
+    department: [],
+    group: [],
     dateJoinedFrom: "",
     dateJoinedTo: "",
     maritalStatus: [],
@@ -111,6 +123,13 @@ const [composeOpen, setComposeOpen] = useState(false);
     const unitMatch =
       filters.unit.length === 0 || filters.unit.includes(person.unit);
 
+    const departmentMatch =
+      filters.department.length === 0 ||
+      filters.department.includes(person.department || "");
+
+    const groupMatch =
+      filters.group.length === 0 || filters.group.includes(person.group || "");
+
     // Marital status filter
     const maritalMatch =
       filters.maritalStatus.length === 0 ||
@@ -128,6 +147,8 @@ const [composeOpen, setComposeOpen] = useState(false);
       statusMatch &&
       rankMatch &&
       unitMatch &&
+      departmentMatch &&
+      groupMatch &&
       maritalMatch &&
       dateFromMatch &&
       dateToMatch
@@ -169,6 +190,8 @@ const [composeOpen, setComposeOpen] = useState(false);
     filters.status.length +
     filters.rank.length +
     filters.unit.length +
+    filters.department.length +
+    filters.group.length +
     filters.maritalStatus.length +
     (filters.dateJoinedFrom ? 1 : 0) +
     (filters.dateJoinedTo ? 1 : 0);
@@ -344,6 +367,50 @@ const [composeOpen, setComposeOpen] = useState(false);
           activeFilterCount={activeFilterCount}
         />
 
+        <Select
+          value={filters.department[0] ?? "all"}
+          onValueChange={(value) =>
+            handleFiltersChange({
+              ...filters,
+              department: value === "all" ? [] : [value],
+            })
+          }
+        >
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Department" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All departments</SelectItem>
+            {departmentOptions.map((department) => (
+              <SelectItem key={department} value={department}>
+                {department}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={filters.group[0] ?? "all"}
+          onValueChange={(value) =>
+            handleFiltersChange({
+              ...filters,
+              group: value === "all" ? [] : [value],
+            })
+          }
+        >
+          <SelectTrigger className="w-[190px]">
+            <SelectValue placeholder="Group" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All groups</SelectItem>
+            {groupOptions.map((group) => (
+              <SelectItem key={group} value={group}>
+                {group}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         {(searchTerm || activeFilterCount > 0) && (
           <Badge variant="outline" className="text-gray-600">
             {sortedPersonnel.length} result
@@ -389,23 +456,8 @@ const [composeOpen, setComposeOpen] = useState(false);
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-6 py-3 text-left">
-                    <input
-                      type="checkbox"
-                      checked={
-                        bulkSelectedPersonnel.length ===
-                          paginatedPersonnel.length &&
-                        paginatedPersonnel.length > 0
-                      }
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setBulkSelectedPersonnel(paginatedPersonnel);
-                        } else {
-                          setBulkSelectedPersonnel([]);
-                        }
-                      }}
-                      className="rounded border-gray-300"
-                    />
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    S/No.
                   </th>
                   <th
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
@@ -415,7 +467,33 @@ const [composeOpen, setComposeOpen] = useState(false);
                       Name
                       {sortField === "first_name" && (
                         <span className="text-blue-600">
-                          {sortDirection === "asc" ? "↑" : "↓"}
+                          {sortDirection === "asc" ? "ASC" : "DESC"}
+                        </span>
+                      )}
+                    </div>
+                  </th>
+                  <th
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort("service_number")}
+                  >
+                    <div className="flex items-center gap-1">
+                      Service Number
+                      {sortField === "service_number" && (
+                        <span className="text-blue-600">
+                          {sortDirection === "asc" ? "ASC" : "DESC"}
+                        </span>
+                      )}
+                    </div>
+                  </th>
+                  <th
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort("gender")}
+                  >
+                    <div className="flex items-center gap-1">
+                      Gender
+                      {sortField === "gender" && (
+                        <span className="text-blue-600">
+                          {sortDirection === "asc" ? "ASC" : "DESC"}
                         </span>
                       )}
                     </div>
@@ -428,52 +506,55 @@ const [composeOpen, setComposeOpen] = useState(false);
                       Rank
                       {sortField === "rank" && (
                         <span className="text-blue-600">
-                          {sortDirection === "asc" ? "↑" : "↓"}
+                          {sortDirection === "asc" ? "ASC" : "DESC"}
                         </span>
                       )}
                     </div>
                   </th>
                   <th
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSort("unit")}
+                    onClick={() => handleSort("date_to_region")}
                   >
                     <div className="flex items-center gap-1">
-                      Unit
-                      {sortField === "unit" && (
+                      Date to Region
+                      {sortField === "date_to_region" && (
                         <span className="text-blue-600">
-                          {sortDirection === "asc" ? "↑" : "↓"}
+                          {sortDirection === "asc" ? "ASC" : "DESC"}
                         </span>
                       )}
                     </div>
                   </th>
                   <th
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSort("email")}
+                    onClick={() => handleSort("date_to_station")}
                   >
                     <div className="flex items-center gap-1">
-                      Email
-                      {sortField === "email" && (
+                      Date to Station
+                      {sortField === "date_to_station" && (
                         <span className="text-blue-600">
-                          {sortDirection === "asc" ? "↑" : "↓"}
+                          {sortDirection === "asc" ? "ASC" : "DESC"}
                         </span>
                       )}
                     </div>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Phone Number
+                    Date of Last Promotion
                   </th>
                   <th
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSort("status")}
+                    onClick={() => handleSort("remarks")}
                   >
                     <div className="flex items-center gap-1">
-                      Status
-                      {sortField === "status" && (
+                      Remarks/Status
+                      {sortField === "remarks" && (
                         <span className="text-blue-600">
-                          {sortDirection === "asc" ? "↑" : "↓"}
+                          {sortDirection === "asc" ? "ASC" : "DESC"}
                         </span>
                       )}
                     </div>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Contact
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
@@ -481,84 +562,59 @@ const [composeOpen, setComposeOpen] = useState(false);
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {paginatedPersonnel.map((person) => (
+                {paginatedPersonnel.map((person, index) => (
                   <tr
                     key={person.id}
                     className="hover:bg-gray-50 transition-colors"
                   >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <input
-                        type="checkbox"
-                        checked={bulkSelectedPersonnel.some(
-                          (p) => p.id === person.id
-                        )}
-                        onChange={(e) =>
-                          handleBulkSelection(person, e.target.checked)
-                        }
-                        className="rounded border-gray-300"
-                      />
+                    <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {startIndex + index + 1}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-3">
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
                         <PersonnelPhotoUpload
                           personnelId={person.id}
                           currentPhotoUrl={person.photo_url ?? undefined}
                           badgeNumber={person.service_number || person.badge_number}
                           fullName={`${person.first_name} ${person.last_name}`}
-                          onPhotoUpdate={(photoUrl) => {
-                            // Update the person's photo in the list
+                          onPhotoUpdate={() => {
                             refreshPersonnel();
                           }}
-                          size="md"
+                          size="sm"
                           editable={true}
                         />
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {person.first_name} {person.last_name}
-                          </div>
-                          <div className="text-xs text-gray-500 space-y-0.5">
-                            {person.service_number && <div>SN: {person.service_number}</div>}
-                            {person.pin_number && <div>PN: {person.pin_number}</div>}
-                            {person.police_office_number && <div>PO: {person.police_office_number}</div>}
-                            {!person.service_number && !person.pin_number && !person.police_office_number && (
-                              <div>Badge: {person.badge_number}</div>
-                            )}
-                          </div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {person.first_name} {person.last_name}
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 font-medium">
-                        {formatRank(person.rank)}
-                      </div>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {person.service_number || person.badge_number}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 capitalize">
-                        {person.unit}
-                      </div>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {person.gender || "-"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {person.email}
-                      </div>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {formatRank(person.rank)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {person.phone || "N/A"}
-                      </div>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {person.date_to_region || "-"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Badge
-                        className={`${getStatusColor(
-                          person.status
-                        )} font-medium`}
-                        variant="outline"
-                      >
-                        {person.status.charAt(0).toUpperCase() +
-                          person.status.slice(1)}
-                      </Badge>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {person.date_to_station || "-"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {person.date_of_last_promotion || "-"}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <span className="text-sm text-gray-900">
+                        {person.remarks || "-"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {person.phone || "-"}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
