@@ -37,6 +37,18 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     }
   }, [user, loading, router, pathname]);
 
+  useEffect(() => {
+    const userAllowedPaths = ["/communication", "/leave", "/settings"];
+    if (
+      !loading &&
+      user?.role === "user" &&
+      pathname &&
+      !userAllowedPaths.some((path) => pathname.startsWith(path))
+    ) {
+      router.replace("/communication");
+    }
+  }, [user, loading, router, pathname]);
+
   // Show loading while checking authentication
   if (loading) {
     return null; // No loading screen for SSR compatibility
@@ -45,6 +57,16 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   // If not authenticated after loading, redirect immediately
   if (!user) {
     return null; // No loading screen for SSR compatibility
+  }
+
+  if (
+    user.role === "user" &&
+    pathname &&
+    !["/communication", "/leave", "/settings"].some((path) =>
+      pathname.startsWith(path)
+    )
+  ) {
+    return null;
   }
 
   // User is authenticated, show the protected content

@@ -25,7 +25,7 @@ interface LayoutProps {
 }
 
 export function Layout({ children }: LayoutProps) {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const { refreshAll, isRefreshing } = useRefresh();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
@@ -116,7 +116,9 @@ export function Layout({ children }: LayoutProps) {
                     <p className="text-xs leading-none text-muted-foreground">
                       {profile?.role === "district_commander"
                         ? "District Commander"
-                        : "Unit Supervisor"}
+                        : user?.role === "user"
+                          ? "User"
+                          : "Unit Supervisor"}
                     </p>
                   </div>
                 </DropdownMenuLabel>

@@ -29,6 +29,13 @@ enum CaseStatus {
   archived
 }
 
+enum ConvictStatus {
+  imprisoned
+  released
+  deceased
+  escaped
+}
+
 enum DutyStatus {
   scheduled
   assigned
@@ -63,20 +70,20 @@ enum LeaveStatus {
 }
 
 model Personnel {
-  id                 String          @id @default(cuid())
-  badge_number       String          @unique
-  service_number     String?         @unique
-  pin_number         String?         @unique
-  police_office_number String?       @unique
-  gender             String?
-  first_name         String
-  last_name          String
-  email              String          @unique
-  phone              String?
-  rank               String
-  unit               String
-  department         String?
-  group              String?
+  id                       String          @id @default(cuid())
+  badge_number             String          @unique
+  service_number           String?
+  pin_number               String?         @unique
+  police_office_number     String?         @unique
+  gender                   String?
+  first_name               String
+  last_name                String
+  email                    String          @unique
+  phone                    String?
+  rank                     String
+  unit                     String
+  department               String?
+  group                    String?
   date_joined              String
   emergency_contacts       String[]
   marital_status           String
@@ -111,6 +118,51 @@ model Case {
   reported_by String
   created_at  DateTime     @default(now())
   updated_at  DateTime     @updatedAt
+
+  convicts     Convict[]
+  case_reports CaseReport[]
+}
+
+model Convict {
+  id                  String        @id @default(cuid())
+  full_name           String
+  alias               String?
+  gender              String?
+  date_of_birth       String?
+  nationality         String?
+  photo_url           String?
+  case_id             String?
+  case_number         String?
+  crime_type          String
+  sentence            String
+  sentence_start_date String?
+  sentence_end_date   String?
+  date_in             String?
+  date_out            String?
+  status              ConvictStatus @default(imprisoned)
+  court_ruling        String?
+  court_date          String?
+  presiding_judge     String?
+  notes               String?
+  created_at          DateTime      @default(now())
+  updated_at          DateTime      @updatedAt
+
+  case Case? @relation(fields: [case_id], references: [id], onDelete: SetNull)
+}
+
+model CaseReport {
+  id              String   @id @default(cuid())
+  case_id         String
+  report_text     String
+  court_ruling    String?
+  court_date      String?
+  presiding_judge String?
+  evidence_urls   String[]
+  created_by      String?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  case Case @relation(fields: [case_id], references: [id], onDelete: Cascade)
 }
 
 model Duty {
@@ -166,7 +218,6 @@ model Circular {
   status          String   @default("sent")
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
-
 
   recipients CircularRecipient[]
 }

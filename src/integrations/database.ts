@@ -393,6 +393,116 @@ export const db = {
     return serializeLeaveRequest(row);
   },
 
+  // Convict operations
+  async getConvicts(): Promise<Convict[]> {
+    if (isBrowser()) {
+      const result = await apiRequest<{ data: Convict[] }>("/api/convicts");
+      return result.data;
+    }
+
+    const prisma = await getPrisma();
+    const rows = await prisma.convict.findMany({ orderBy: { created_at: "desc" } });
+    return rows.map(serializeConvict);
+  },
+
+  async createConvict(convict: Omit<Convict, "id" | "created_at" | "updated_at">): Promise<Convict> {
+    if (isBrowser()) {
+      const result = await apiRequest<{ data: Convict }>("/api/convicts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(convict),
+      });
+      return result.data;
+    }
+
+    const prisma = await getPrisma();
+    const row = await prisma.convict.create({ data: convict as any });
+    return serializeConvict(row);
+  },
+
+  async updateConvict(id: string, convict: Partial<Omit<Convict, "id" | "created_at">>): Promise<Convict> {
+    if (isBrowser()) {
+      const result = await apiRequest<{ data: Convict }>(`/api/convicts/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(convict),
+      });
+      return result.data;
+    }
+
+    const prisma = await getPrisma();
+    const row = await prisma.convict.update({ where: { id }, data: convict as any });
+    return serializeConvict(row);
+  },
+
+  async deleteConvict(id: string) {
+    if (isBrowser()) {
+      await apiRequest<{ success: boolean }>(`/api/convicts/${id}`, { method: "DELETE" });
+      return { success: true };
+    }
+
+    const prisma = await getPrisma();
+    await prisma.convict.delete({ where: { id } });
+    return { success: true };
+  },
+
+  // Case Report operations
+  async getCaseReports(case_id?: string): Promise<CaseReport[]> {
+    if (isBrowser()) {
+      const url = case_id ? `/api/case-reports?case_id=${case_id}` : "/api/case-reports";
+      const result = await apiRequest<{ data: CaseReport[] }>(url);
+      return result.data;
+    }
+
+    const prisma = await getPrisma();
+    const rows = await prisma.caseReport.findMany({
+      where: case_id ? { case_id } : undefined,
+      orderBy: { created_at: "desc" },
+    });
+    return rows.map(serializeCaseReport);
+  },
+
+  async createCaseReport(report: Omit<CaseReport, "id" | "created_at" | "updated_at">): Promise<CaseReport> {
+    if (isBrowser()) {
+      const result = await apiRequest<{ data: CaseReport }>("/api/case-reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(report),
+      });
+      return result.data;
+    }
+
+    const prisma = await getPrisma();
+    const row = await prisma.caseReport.create({ data: report as any });
+    return serializeCaseReport(row);
+  },
+
+  async updateCaseReport(id: string, report: Partial<Omit<CaseReport, "id" | "created_at">>): Promise<CaseReport> {
+    if (isBrowser()) {
+      const result = await apiRequest<{ data: CaseReport }>(`/api/case-reports/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(report),
+      });
+      return result.data;
+    }
+
+    const prisma = await getPrisma();
+    const row = await prisma.caseReport.update({ where: { id }, data: report as any });
+    return serializeCaseReport(row);
+  },
+
+  async deleteCaseReport(id: string) {
+    if (isBrowser()) {
+      await apiRequest<{ success: boolean }>(`/api/case-reports/${id}`, { method: "DELETE" });
+      return { success: true };
+    }
+
+    const prisma = await getPrisma();
+    await prisma.caseReport.delete({ where: { id } });
+    return { success: true };
+  },
+
   getCurrentBackend() {
     return "Neon (PostgreSQL) via Prisma";
   },
@@ -429,6 +539,22 @@ function serializeLeaveRequest(row: any): LeaveRequest {
     created_at: row.created_at instanceof Date ? row.created_at.toISOString() : row.created_at,
     updated_at: row.updated_at instanceof Date ? row.updated_at.toISOString() : row.updated_at,
     reviewed_at: row.reviewed_at instanceof Date ? row.reviewed_at.toISOString() : row.reviewed_at,
+  };
+}
+
+function serializeConvict(row: any): Convict {
+  return {
+    ...row,
+    created_at: row.created_at instanceof Date ? row.created_at.toISOString() : row.created_at,
+    updated_at: row.updated_at instanceof Date ? row.updated_at.toISOString() : row.updated_at,
+  };
+}
+
+function serializeCaseReport(row: any): CaseReport {
+  return {
+    ...row,
+    created_at: row.created_at instanceof Date ? row.created_at.toISOString() : row.created_at,
+    updated_at: row.updated_at instanceof Date ? row.updated_at.toISOString() : row.updated_at,
   };
 }
 
@@ -528,4 +654,42 @@ export interface LeaveRequest {
     username: string;
     role: string;
   } | null;
+}
+
+export interface Convict {
+  id: string;
+  full_name: string;
+  alias?: string | null;
+  gender?: string | null;
+  date_of_birth?: string | null;
+  nationality?: string | null;
+  photo_url?: string | null;
+  case_id?: string | null;
+  case_number?: string | null;
+  crime_type: string;
+  sentence: string;
+  sentence_start_date?: string | null;
+  sentence_end_date?: string | null;
+  date_in?: string | null;
+  date_out?: string | null;
+  status: "imprisoned" | "released" | "deceased" | "escaped";
+  court_ruling?: string | null;
+  court_date?: string | null;
+  presiding_judge?: string | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CaseReport {
+  id: string;
+  case_id: string;
+  report_text: string;
+  court_ruling?: string | null;
+  court_date?: string | null;
+  presiding_judge?: string | null;
+  evidence_urls: string[];
+  created_by?: string | null;
+  created_at: string;
+  updated_at: string;
 }

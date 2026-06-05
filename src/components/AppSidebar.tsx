@@ -9,6 +9,7 @@ import {
   Home,
   MessageSquare,
   Settings,
+  ShieldAlert,
   Users,
   PanelLeft,
   ChevronRight,
@@ -17,6 +18,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
 import { useNavigation } from "@/hooks/useNavigation";
 import { Loading } from "@/components/ui/loading";
 
@@ -24,6 +26,7 @@ const menuItems = [
   { title: "Overview", url: "/dashboard", icon: Home },
   { title: "Personnel", url: "/personnel", icon: Users },
   { title: "Cases", url: "/cases", icon: FileText },
+  { title: "Convict DB", url: "/convict-db", icon: ShieldAlert },
   { title: "Duties", url: "/duties", icon: Calendar },
   { title: "Leave", url: "/leave", icon: CalendarDays },
   { title: "Communication", url: "/communication", icon: MessageSquare },
@@ -31,10 +34,16 @@ const menuItems = [
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
+const userMenuItems = menuItems.filter((item) =>
+  ["Communication", "Leave", "Settings"].includes(item.title)
+);
+
 export function AppSidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const pathname = usePathname();
+  const { user } = useAuth();
   const { isNavigating } = useNavigation();
+  const visibleMenuItems = user?.role === "user" ? userMenuItems : menuItems;
 
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed);
@@ -79,7 +88,7 @@ export function AppSidebar() {
         {/* Navigation */}
         <div className="flex-1 py-2 lg:py-4 overflow-y-auto">
           <nav className={`${isCollapsed ? "px-2" : "px-3"}`}>
-            {menuItems.map((item) => {
+            {visibleMenuItems.map((item) => {
               const isActive = pathname === item.url;
               return (
                 <Link

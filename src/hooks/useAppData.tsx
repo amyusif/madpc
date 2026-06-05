@@ -1,23 +1,26 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { db } from "@/integrations/database";
-import type { Personnel, Case, Duty } from "@/integrations/database";
+import type { Personnel, Case, Duty, Convict } from "@/integrations/database";
 import { useAuth } from "./useAuth";
 
 interface AppDataContextType {
   personnel: Personnel[];
   cases: Case[];
   duties: Duty[];
+  convicts: Convict[];
   loading: boolean;
   error: string | null;
   refreshData: () => Promise<void>;
   refreshPersonnel: () => Promise<void>;
   refreshCases: () => Promise<void>;
   refreshDuties: () => Promise<void>;
+  refreshConvicts: () => Promise<void>;
   stats: {
     totalPersonnel: number;
     activeCases: number;
     pendingDuties: number;
     activeAlerts: number;
+    totalConvicts: number;
   };
 }
 
@@ -27,6 +30,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [personnel, setPersonnel] = useState<Personnel[]>([]);
   const [cases, setCases] = useState<Case[]>([]);
   const [duties, setDuties] = useState<Duty[]>([]);
+  const [convicts, setConvicts] = useState<Convict[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
@@ -59,15 +63,22 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       setDuties(data || []);
     } catch (error: any) {
       console.error("Error fetching duties:", error);
-      // If duties table doesn't exist, set empty array instead of throwing
       if (error.message?.includes('relation "duties" does not exist')) {
-        console.warn(
-          "Duties table does not exist. Please run the database setup script."
-        );
+        console.warn("Duties table does not exist. Please run the database setup script.");
         setDuties([]);
         return;
       }
       throw error;
+    }
+  };
+
+  const fetchConvicts = async () => {
+    try {
+      const data = await db.getConvicts();
+      setConvicts(data || []);
+    } catch (error: any) {
+      console.error("Error fetching convicts:", error);
+      setConvicts([]);
     }
   };
 
@@ -77,22 +88,20 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     setError(null);
 
     try {
-      // Fetch data in parallel, but handle each separately to avoid one failure stopping all
       const results = await Promise.allSettled([
         fetchPersonnel(),
         fetchCases(),
         fetchDuties(),
+        fetchConvicts(),
       ]);
 
-      // Check for any failures and log them
       results.forEach((result, index) => {
         if (result.status === "rejected") {
-          const dataType = ["personnel", "cases", "duties"][index];
+          const dataType = ["personnel", "cases", "duties", "convicts"][index];
           console.error(`Failed to fetch ${dataType}:`, result.reason);
         }
       });
 
-      // Only set error if all requests failed
       const allFailed = results.every((result) => result.status === "rejected");
       if (allFailed) {
         setError("Failed to fetch data from database");
@@ -127,45 +136,46 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       await fetchDuties();
     } catch (error: any) {
       console.error("Failed to refresh duties:", error);
-      // Don't set error state for duties table not existing
       if (!error.message?.includes('relation "duties" does not exist')) {
         setError(error.message || "Failed to fetch duties");
       }
     }
   };
 
-  // Calculate stats from the data
-  // - Total Personnel: count all personnel (not just active)
-  // - Active Cases: open + in_progress
-  // - Pending Duties: everything not completed or cancelled
+  const refreshConvicts = async () => {
+    try {
+      await fetchConvicts();
+    } catch (error: any) {
+      console.error("Failed to refresh convicts:", error);
+    }
+  };
+
   const stats = {
     totalPersonnel: personnel.length,
     activeCases: cases.filter((c) => c.status === "open" || c.status === "in_progress").length,
     pendingDuties: duties.filter((d) => d.status !== "completed" && d.status !== "cancelled").length,
-    activeAlerts: 0, // This would come from alerts collection when implemented
+    activeAlerts: 0,
+    totalConvicts: convicts.length,
   };
 
-  // Fetch data when user logs in
   useEffect(() => {
     if (user) {
-      // Start with no loading state, fetch data in background
       setLoading(false);
       refreshData();
 
-      // Set up periodic refresh every 30 seconds
       const intervalId = setInterval(() => {
         console.log("Auto-refreshing data...");
         refreshData();
-      }, 30000); // 30 seconds
+      }, 30000);
 
       return () => {
         clearInterval(intervalId);
       };
     } else {
-      // Clear data when user logs out
       setPersonnel([]);
       setCases([]);
       setDuties([]);
+      setConvicts([]);
       setLoading(false);
     }
   }, [user]);
@@ -174,12 +184,14 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     personnel,
     cases,
     duties,
+    convicts,
     loading,
     error,
     refreshData,
     refreshPersonnel,
     refreshCases,
     refreshDuties,
+    refreshConvicts,
     stats,
   };
 

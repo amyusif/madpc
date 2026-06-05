@@ -105,18 +105,29 @@ export default function Personnel() {
 
     try {
       const existingPersonnel = await db.getPersonnel();
-      const existingByUniqueValue = new Map<string, string>();
+      const existingByContact = new Map<string, string>();
+      const existingByFallbackValue = new Map<string, string>();
 
-      const rememberExisting = (value: string | null | undefined, id: string) => {
-        if (value) existingByUniqueValue.set(value.toLowerCase(), id);
+      const rememberExistingContact = (
+        value: string | null | undefined,
+        id: string
+      ) => {
+        if (value) existingByContact.set(value.toLowerCase(), id);
+      };
+
+      const rememberExistingFallback = (
+        value: string | null | undefined,
+        id: string
+      ) => {
+        if (value) existingByFallbackValue.set(value.toLowerCase(), id);
       };
 
       existingPersonnel.forEach((person) => {
-        rememberExisting(person.badge_number, person.id);
-        rememberExisting(person.service_number, person.id);
-        rememberExisting(person.pin_number, person.id);
-        rememberExisting(person.police_office_number, person.id);
-        rememberExisting(person.email, person.id);
+        rememberExistingContact(person.phone, person.id);
+        rememberExistingFallback(person.badge_number, person.id);
+        rememberExistingFallback(person.pin_number, person.id);
+        rememberExistingFallback(person.police_office_number, person.id);
+        rememberExistingFallback(person.email, person.id);
       });
 
       for (let index = 0; index < data.length; index++) {
@@ -150,6 +161,7 @@ export default function Personnel() {
           pinNumber ||
           policeOfficeNumber;
         const rank = getCsvValue(row, ["rank", "Rank"]) || "Unknown";
+        const contact = getCsvValue(row, ["phone", "Phone", "contact", "Contact"]);
         const unit =
           getCsvValue(row, [
             "unit",
@@ -159,7 +171,7 @@ export default function Personnel() {
             "Name of Station",
           ]) || "Unassigned";
         const importIdentifier =
-          badgeNumber || `IMPORT-${Date.now()}-${rowNumber}`;
+          contact || badgeNumber || `IMPORT-${Date.now()}-${rowNumber}`;
         const importFirstName = firstName || "Unknown";
         const importLastName = lastName || `Personnel ${rowNumber}`;
         const email =
@@ -178,7 +190,7 @@ export default function Personnel() {
           first_name: importFirstName,
           last_name: importLastName,
           email,
-          phone: getCsvValue(row, ["phone", "Phone", "contact", "Contact"]) || undefined,
+          phone: contact || undefined,
           gender: getCsvValue(row, ["gender", "Gender", "sex", "Sex"]) || undefined,
           rank,
           unit,
@@ -218,22 +230,23 @@ export default function Personnel() {
 
         try {
           const existingId =
-            existingByUniqueValue.get(importIdentifier.toLowerCase()) ||
-            (serviceNumber && existingByUniqueValue.get(serviceNumber.toLowerCase())) ||
-            (pinNumber && existingByUniqueValue.get(pinNumber.toLowerCase())) ||
+            (contact && existingByContact.get(contact.toLowerCase())) ||
+            (!contact && existingByFallbackValue.get(importIdentifier.toLowerCase())) ||
+            (!contact && pinNumber && existingByFallbackValue.get(pinNumber.toLowerCase())) ||
             (policeOfficeNumber &&
-              existingByUniqueValue.get(policeOfficeNumber.toLowerCase())) ||
-            existingByUniqueValue.get(email.toLowerCase());
+              !contact &&
+              existingByFallbackValue.get(policeOfficeNumber.toLowerCase())) ||
+            (!contact && existingByFallbackValue.get(email.toLowerCase()));
 
           const savedPersonnel = existingId
             ? await db.updatePersonnel(existingId, personnelData)
             : await db.createPersonnel(personnelData);
 
-          rememberExisting(savedPersonnel.badge_number, savedPersonnel.id);
-          rememberExisting(savedPersonnel.service_number, savedPersonnel.id);
-          rememberExisting(savedPersonnel.pin_number, savedPersonnel.id);
-          rememberExisting(savedPersonnel.police_office_number, savedPersonnel.id);
-          rememberExisting(savedPersonnel.email, savedPersonnel.id);
+          rememberExistingContact(savedPersonnel.phone, savedPersonnel.id);
+          rememberExistingFallback(savedPersonnel.badge_number, savedPersonnel.id);
+          rememberExistingFallback(savedPersonnel.pin_number, savedPersonnel.id);
+          rememberExistingFallback(savedPersonnel.police_office_number, savedPersonnel.id);
+          rememberExistingFallback(savedPersonnel.email, savedPersonnel.id);
           successRows++;
         } catch (error: any) {
           errors.push(

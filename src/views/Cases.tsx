@@ -37,20 +37,32 @@ import {
   MoreHorizontal,
   Filter,
   X,
+  Gavel,
+  ShieldAlert,
 } from "lucide-react";
 import AddCaseModal from "@/components/modals/AddCaseModal";
 import DeleteCaseModal from "@/components/modals/DeleteCaseModal";
+import AddCaseReportModal from "@/components/modals/AddCaseReportModal";
+import AddConvictModal from "@/components/modals/AddConvictModal";
 import { CaseEvidenceUpload } from "@/components/CaseEvidenceUpload";
 import { CSVImportExport } from "@/components/CSVImportExport";
 import { useAppData } from "@/hooks/useAppData";
+import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/integrations/database";
+import type { Case } from "@/integrations/database";
+
 export default function Cases() {
-  const { cases, refreshCases, loading } = useAppData();
+  const { cases, refreshCases, refreshConvicts, loading } = useAppData();
+  const { user } = useAuth();
   const [showAddCaseModal, setShowAddCaseModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showEvidenceModal, setShowEvidenceModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [showAddConvictModal, setShowAddConvictModal] = useState(false);
   const [selectedCase, setSelectedCase] = useState<any>(null);
+  const [reportCase, setReportCase] = useState<Case | null>(null);
+  const [convictCase, setConvictCase] = useState<Case | null>(null);
   const [caseToDelete, setCaseToDelete] = useState<{
     id: string;
     case_number: string;
@@ -75,6 +87,18 @@ export default function Cases() {
   const handleViewEvidence = (caseItem: any) => {
     setSelectedCase(caseItem);
     setShowEvidenceModal(true);
+  };
+
+  // Handle log court report
+  const handleLogReport = (caseItem: Case) => {
+    setReportCase(caseItem);
+    setShowReportModal(true);
+  };
+
+  // Handle add convict from case
+  const handleAddConvict = (caseItem: Case) => {
+    setConvictCase(caseItem);
+    setShowAddConvictModal(true);
   };
 
   // Handle case import
@@ -207,6 +231,8 @@ CAS002,Fraud Case,Fraud,Credit card fraud investigation,medium,in_progress,Offic
         return status;
     }
   };
+
+  const isClosed = (status: string) => status === "closed" || status === "archived";
 
   return (
     <div className="p-6 space-y-6">
@@ -426,6 +452,24 @@ CAS002,Fraud Case,Fraud,Credit card fraud investigation,medium,in_progress,Offic
                           <Edit className="mr-2 h-4 w-4" />
                           Edit
                         </DropdownMenuItem>
+                        {isClosed(caseItem.status) && (
+                          <>
+                            <DropdownMenuItem
+                              onClick={() => handleLogReport(caseItem)}
+                              className="text-indigo-600"
+                            >
+                              <Gavel className="mr-2 h-4 w-4" />
+                              Log Court Report
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleAddConvict(caseItem)}
+                              className="text-red-600"
+                            >
+                              <ShieldAlert className="mr-2 h-4 w-4" />
+                              Add to Convict DB
+                            </DropdownMenuItem>
+                          </>
+                        )}
                         <DropdownMenuItem
                           className="text-red-600"
                           onClick={() => handleDeleteClick(caseItem)}
@@ -491,6 +535,24 @@ CAS002,Fraud Case,Fraud,Credit card fraud investigation,medium,in_progress,Offic
           </div>
         </div>
       )}
+
+      {/* Court Report Modal */}
+      <AddCaseReportModal
+        open={showReportModal}
+        onOpenChange={setShowReportModal}
+        caseItem={reportCase}
+        onReportAdded={async () => {}}
+        createdBy={user?.username}
+      />
+
+      {/* Add Convict from Case Modal */}
+      <AddConvictModal
+        open={showAddConvictModal}
+        onOpenChange={setShowAddConvictModal}
+        onConvictAdded={refreshConvicts}
+        prefilledCaseId={convictCase?.id}
+        prefilledCaseNumber={convictCase?.case_number}
+      />
     </div>
   );
 }

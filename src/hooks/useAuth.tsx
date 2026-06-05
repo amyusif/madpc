@@ -13,7 +13,11 @@ interface Profile {
   updated_at?: string;
 }
 
-interface MinimalUser { id: string; email?: string | null }
+interface MinimalUser {
+  id: string;
+  email?: string | null;
+  role?: string | null;
+}
 
 interface AuthContextType {
   user: MinimalUser | null;
@@ -38,7 +42,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .then((r) => r.json())
       .then((data) => {
         if (data.user) {
-          setUser({ id: data.user.sub, email: data.user.email });
+          setUser({ id: data.user.sub, email: data.user.email, role: data.user.role });
           // Fetch profile from personnel
           return fetch(`/api/profiles/${data.user.sub}`).then((r) => r.json());
         }
@@ -74,7 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || data.details || "Failed to sign in");
 
-      const u = { id: data.id, email: data.email };
+      const u = { id: data.id, email: data.email, role: data.role };
       setUser(u);
 
       // Fetch profile

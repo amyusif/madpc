@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, CheckCircle2, Clock3, XCircle } from "lucide-react";
+import { CalendarDays, CheckCircle2, Clock3, Printer, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,29 @@ const STATUS_STYLE: Record<string, string> = {
   approved: "bg-emerald-100 text-emerald-800",
   rejected: "bg-red-100 text-red-800",
   cancelled: "bg-gray-200 text-gray-700",
+};
+
+const formatLeaveType = (type: string) =>
+  LEAVE_TYPE_OPTIONS.find((option) => option.value === type)?.label ||
+  `${type.charAt(0).toUpperCase()}${type.slice(1)} Leave`;
+
+const escapeHtml = (value: unknown) =>
+  String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+
+const formatDisplayDate = (value?: string | null) => {
+  if (!value) return "-";
+  const date = new Date(value.includes("T") ? value : `${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 };
 
 export default function Leave() {
@@ -134,6 +157,214 @@ export default function Leave() {
     } finally {
       setReviewingId(null);
     }
+  };
+
+  const printLeaveReceipt = (req: LeaveRequest) => {
+    if (req.status !== "approved") {
+      toast({
+        title: "Receipt unavailable",
+        description: "Leave receipts can only be printed after approval.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const officerName =
+      `${req.personnel?.first_name ?? ""} ${req.personnel?.last_name ?? ""}`.trim() ||
+      "Personnel Officer";
+    const reviewedBy = req.reviewed_by?.fullName || req.reviewed_by?.username || "Management";
+    const printedAt = new Date();
+    const htmlContent = `
+      <!doctype html>
+      <html>
+      <head>
+        <title>Leave Receipt - ${escapeHtml(officerName)}</title>
+        <style>
+          * { box-sizing: border-box; }
+          body {
+            margin: 0;
+            padding: 32px;
+            color: #111827;
+            font-family: Arial, sans-serif;
+            background: #ffffff;
+          }
+          .receipt {
+            max-width: 760px;
+            margin: 0 auto;
+            border: 1px solid #d1d5db;
+            padding: 32px;
+          }
+          .header {
+            border-bottom: 2px solid #111827;
+            padding-bottom: 16px;
+            margin-bottom: 24px;
+            text-align: center;
+          }
+          .header h1 {
+            margin: 0;
+            font-size: 22px;
+            letter-spacing: 0;
+            text-transform: uppercase;
+          }
+          .header p {
+            margin: 6px 0 0;
+            font-size: 13px;
+            color: #4b5563;
+          }
+          .status {
+            display: inline-block;
+            margin-top: 12px;
+            padding: 6px 12px;
+            border: 1px solid #047857;
+            color: #047857;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+          }
+          .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px 24px;
+            margin-bottom: 24px;
+          }
+          .field {
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 8px;
+          }
+          .field.full {
+            grid-column: 1 / -1;
+          }
+          .label {
+            display: block;
+            color: #6b7280;
+            font-size: 11px;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+          }
+          .value {
+            font-size: 14px;
+            font-weight: 600;
+            white-space: pre-wrap;
+          }
+          .signatures {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 48px;
+            margin-top: 42px;
+          }
+          .signature-line {
+            border-top: 1px solid #111827;
+            padding-top: 8px;
+            font-size: 12px;
+            text-align: center;
+          }
+          .footer {
+            margin-top: 28px;
+            color: #6b7280;
+            font-size: 11px;
+            text-align: center;
+          }
+          @media print {
+            body { padding: 0; }
+            .receipt { border: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <main class="receipt">
+          <section class="header">
+            <h1>Leave Approval Receipt</h1>
+            <p>Manso Adubia District Police Command System</p>
+            <span class="status">Approved</span>
+          </section>
+
+          <section class="grid">
+            <div class="field">
+              <span class="label">Officer Name</span>
+              <span class="value">${escapeHtml(officerName)}</span>
+            </div>
+            <div class="field">
+              <span class="label">Service / Badge Number</span>
+              <span class="value">${escapeHtml(req.personnel?.badge_number || "-")}</span>
+            </div>
+            <div class="field">
+              <span class="label">Rank</span>
+              <span class="value">${escapeHtml(req.personnel?.rank || "-")}</span>
+            </div>
+            <div class="field">
+              <span class="label">Unit</span>
+              <span class="value">${escapeHtml(req.personnel?.unit || "-")}</span>
+            </div>
+            <div class="field">
+              <span class="label">Leave Type</span>
+              <span class="value">${escapeHtml(formatLeaveType(req.leave_type))}</span>
+            </div>
+            <div class="field">
+              <span class="label">Days Approved</span>
+              <span class="value">${escapeHtml(req.days_requested)} day${req.days_requested === 1 ? "" : "s"}</span>
+            </div>
+            <div class="field">
+              <span class="label">Start Date</span>
+              <span class="value">${escapeHtml(formatDisplayDate(req.start_date))}</span>
+            </div>
+            <div class="field">
+              <span class="label">End Date</span>
+              <span class="value">${escapeHtml(formatDisplayDate(req.end_date))}</span>
+            </div>
+            <div class="field full">
+              <span class="label">Reason</span>
+              <span class="value">${escapeHtml(req.reason)}</span>
+            </div>
+            <div class="field full">
+              <span class="label">Management Note</span>
+              <span class="value">${escapeHtml(req.admin_note || "-")}</span>
+            </div>
+            <div class="field">
+              <span class="label">Approved By</span>
+              <span class="value">${escapeHtml(reviewedBy)}</span>
+            </div>
+            <div class="field">
+              <span class="label">Approved On</span>
+              <span class="value">${escapeHtml(formatDisplayDate(req.reviewed_at))}</span>
+            </div>
+            <div class="field">
+              <span class="label">Receipt ID</span>
+              <span class="value">${escapeHtml(req.id)}</span>
+            </div>
+            <div class="field">
+              <span class="label">Printed On</span>
+              <span class="value">${escapeHtml(printedAt.toLocaleString())}</span>
+            </div>
+          </section>
+
+          <section class="signatures">
+            <div class="signature-line">Approving Officer Signature</div>
+            <div class="signature-line">Personnel Signature</div>
+          </section>
+
+          <p class="footer">This receipt confirms that the leave request above has been approved.</p>
+        </main>
+      </body>
+      </html>
+    `;
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      toast({
+        title: "Print window blocked",
+        description: "Allow pop-ups for this site and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 500);
   };
 
   if (loading) {
@@ -343,6 +574,17 @@ export default function Leave() {
                     <p className="text-sm text-muted-foreground">
                       <span className="font-medium">Management note:</span> {req.admin_note}
                     </p>
+                  )}
+                  {req.status === "approved" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      onClick={() => printLeaveReceipt(req)}
+                    >
+                      <Printer className="w-4 h-4" />
+                      Print Receipt
+                    </Button>
                   )}
                 </div>
               ))}

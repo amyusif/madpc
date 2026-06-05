@@ -109,6 +109,16 @@ export async function GET() {
       where: { personnel_id: currentUser.id },
       orderBy: { created_at: "desc" },
       include: {
+        personnel: {
+          select: {
+            id: true,
+            first_name: true,
+            last_name: true,
+            badge_number: true,
+            unit: true,
+            rank: true,
+          },
+        },
         reviewed_by: {
           select: {
             id: true,
