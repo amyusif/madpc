@@ -7,11 +7,12 @@ const serialize = (row: any) => ({
   updated_at: row.updated_at instanceof Date ? row.updated_at.toISOString() : row.updated_at,
 });
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const row = await prisma.caseReport.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         ...(body.report_text !== undefined && { report_text: body.report_text }),
         ...(body.court_ruling !== undefined && { court_ruling: body.court_ruling }),
@@ -28,9 +29,10 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await prisma.caseReport.delete({ where: { id: params.id } });
+    const { id } = await params;
+    await prisma.caseReport.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("DELETE /api/case-reports/[id] error:", error);

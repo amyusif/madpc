@@ -54,7 +54,7 @@ import type { Case } from "@/integrations/database";
 
 export default function Cases() {
   const { cases, refreshCases, refreshConvicts, loading } = useAppData();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [showAddCaseModal, setShowAddCaseModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showEvidenceModal, setShowEvidenceModal] = useState(false);
@@ -542,7 +542,7 @@ CAS002,Fraud Case,Fraud,Credit card fraud investigation,medium,in_progress,Offic
         onOpenChange={setShowReportModal}
         caseItem={reportCase}
         onReportAdded={async () => {}}
-        createdBy={user?.username}
+        createdBy={profile?.full_name || user?.email || undefined}
       />
 
       {/* Add Convict from Case Modal */}

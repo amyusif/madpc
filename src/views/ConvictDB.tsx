@@ -80,7 +80,7 @@ const STATUS_DOT: Record<string, string> = {
 
 export default function ConvictDB() {
   const { cases, convicts, refreshConvicts } = useAppData();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState<Tab>("registry");
@@ -612,7 +612,7 @@ export default function ConvictDB() {
         onOpenChange={setShowReportModal}
         caseItem={reportCase}
         onReportAdded={afterReportAdded}
-        createdBy={user?.username}
+        createdBy={profile?.full_name || user?.email || undefined}
       />
 
       {/* Delete Confirm */}

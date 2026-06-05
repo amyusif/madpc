@@ -7,9 +7,10 @@ const serialize = (row: any) => ({
   updated_at: row.updated_at instanceof Date ? row.updated_at.toISOString() : row.updated_at,
 });
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const row = await prisma.convict.findUnique({ where: { id: params.id } });
+    const { id } = await params;
+    const row = await prisma.convict.findUnique({ where: { id } });
     if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
     return NextResponse.json({ data: serialize(row) });
   } catch (error) {
@@ -18,11 +19,12 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const row = await prisma.convict.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         ...(body.full_name !== undefined && { full_name: body.full_name }),
         ...(body.alias !== undefined && { alias: body.alias }),
@@ -52,9 +54,10 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await prisma.convict.delete({ where: { id: params.id } });
+    const { id } = await params;
+    await prisma.convict.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("DELETE /api/convicts/[id] error:", error);
